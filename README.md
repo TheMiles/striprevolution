@@ -1,4 +1,4 @@
 ledrevolution
 =============
 
-LED Revoluitoin Lighting Inc.
+LED Revolution Lighting Inc.
