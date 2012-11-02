@@ -43,59 +43,153 @@
     This library uses the PWM output ability of digital pins 3, 9, 10, and 11.
     Do not use analogWrite(...) on these pins.
 
-    This sketch does the Knight Rider strobe across a line of LEDs.
-
-    Alex Leone <acleone ~AT~ gmail.com>, 2009-02-03 */
+*/
 
 #include "Tlc5940.h"
 
-void setup()
+
+const int Input_Buffer_Length = 64;
+const int Num_Channels        = 15;
+const int Max_Value           = 4095;
+
+long      previous_timestamp  = 0;
+long      base_delay          = 10;
+
+class CommandParser
 {
-  /* Call Tlc.init() to setup the tlc.
-     You can optionally pass an initial PWM value (0 - 4095) for all channels.*/
-  Tlc.init();
-}
+public:
 
-/* This loop will create a Knight Rider-like effect if you have LEDs plugged
-   into all the TLC outputs.  NUM_TLCS is defined in "tlc_config.h" in the
-   library folder.  After editing tlc_config.h for your setup, delete the
-   Tlc5940.o file to save the changes. */
+  typedef void(*UpdateChannelCBK)(int, int);
+  
 
-void loop()
-{
-  int direction = 1;
-  for (int channel = 0; channel < NUM_TLCS * 16; channel += direction) {
-
-    /* Tlc.clear() sets all the grayscale values to zero, but does not send
-       them to the TLCs.  To actually send the data, call Tlc.update() */
-    Tlc.clear();
-
-    /* Tlc.set(channel (0-15), value (0-4095)) sets the grayscale value for
-       one channel (15 is OUT15 on the first TLC, if multiple TLCs are daisy-
-       chained, then channel = 16 would be OUT0 of the second TLC, etc.).
-
-       value goes from off (0) to always on (4095).
-
-       Like Tlc.clear(), this function only sets up the data, Tlc.update()
-       will send the data. */
-    if (channel == 0) {
-      direction = 1;
-    } else {
-      Tlc.set(channel - 1, 1000);
-    }
-    Tlc.set(channel, 4095);
-    if (channel != NUM_TLCS * 16 - 1) {
-      Tlc.set(channel + 1, 1000);
-    } else {
-      direction = -1;
-    }
-
-    /* Tlc.update() sends the data to the TLCs.  This is when the LEDs will
-       actually change. */
-    Tlc.update();
-
-    delay(75);
+  CommandParser()  
+  : m_updateFunction(NULL)
+  , m_command('n')
+  , m_number(0)
+  , m_idle_counter(0)
+  , m_active_color(0)
+  , m_active_channel(0)
+  {        
+    Serial.begin(9600);
   }
 
+void handle_command()
+{
+  if( m_command != 'n' )
+  {
+    switch( m_command )
+    {
+    case 'c':
+      m_active_channel = constrain( m_number, 0, Num_Channels  );
+      break;
+    case 'v':
+      m_active_color = constrain( m_number, 0, Max_Value );
+      if( m_updateFunction )
+          m_updateFunction( m_active_channel, m_active_color );
+      break;
+    default:
+      break;
+    }
+    
+    m_number = 0;
+  }
 }
 
+
+bool parse_input()
+{
+  int avail = Serial.available();
+  memset( m_input_buffer, 0, Input_Buffer_Length );
+  Serial.readBytes( m_input_buffer, avail );
+  
+  if( avail > 0 )
+  {
+    m_idle_counter = 0;
+    
+    bool found   = false;
+    char new_command = 'n';
+    char c;
+    
+    for( int i=0; i<avail; ++i )
+    {
+      // check current byte
+      c = m_input_buffer[i];
+
+      if( c >= 0x30 && c<= 0x39 )
+      {
+        // digit adds up to the current number
+        int digit = c - 0x30;        // get digit value
+        m_number = m_number * 10 + digit;// shift number and add digit
+      }
+      else
+      {
+        // in all other cases we think this must be a command
+        new_command = c;
+        found = true;
+      }
+      
+      if( found )
+      {
+        handle_command();
+        m_command = new_command;
+        found = false;
+      }
+    }
+  }
+  else
+  {
+    ++m_idle_counter;
+    if( m_idle_counter == 1 )
+    {
+      handle_command();
+      m_command = 'n';
+    }
+  }
+}
+
+  void setUpdateCallback( UpdateChannelCBK callback )
+  {
+    m_updateFunction = callback;
+  }
+  
+private:
+  char m_input_buffer[ Input_Buffer_Length ];
+  char m_command;
+  int  m_number;
+  int  m_idle_counter;
+  int  m_active_color; // values range [0..255]
+  int  m_active_channel;
+  UpdateChannelCBK m_updateFunction;
+};
+
+CommandParser *command_parser;
+
+
+void tlc_updater( int channel, int value)
+{
+  Tlc.set(channel, value);
+  Tlc.update();
+}
+
+
+
+
+// the setup routine runs once when you press reset:
+void setup() 
+{        
+  Tlc.init();
+  command_parser = new CommandParser();
+  command_parser->setUpdateCallback( tlc_updater );
+  
+}
+
+// the loop routine runs over and over again forever:
+void loop() 
+{
+  long current_timestamp = millis();
+  if( current_timestamp - previous_timestamp > base_delay )
+  {
+     previous_timestamp = current_timestamp;
+     command_parser->parse_input();
+  }
+}
