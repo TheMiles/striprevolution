@@ -59,16 +59,20 @@ class CommandParser
 {
 public:
 
-  typedef void(*UpdateChannelCBK)(int, int);
+  typedef void(*ValueChangedCBK)(int, int);
+  typedef void(*UpdateFinishedCBK)(void);
+  
   
 
   CommandParser()  
-  : m_updateFunction(NULL)
-  , m_command('n')
+  : m_command('n')
   , m_number(0)
   , m_idle_counter(0)
   , m_active_color(0)
   , m_active_channel(0)
+  , m_update_needed(false)
+  , m_value_changed_function(NULL)
+  , m_update_finished_function(NULL)
   {        
     Serial.begin(9600);
   }
@@ -84,8 +88,12 @@ void handle_command()
       break;
     case 'v':
       m_active_color = constrain( m_number, 0, Max_Value );
-      if( m_updateFunction )
-          m_updateFunction( m_active_channel, m_active_color );
+      if( m_value_changed_function )
+      {
+        m_value_changed_function( m_active_channel, m_active_color );
+        m_update_needed = true;
+      }
+      
       break;
     default:
       break;
@@ -98,6 +106,8 @@ void handle_command()
 
 bool parse_input()
 {
+  m_update_needed = false;
+
   int avail = Serial.available();
   memset( m_input_buffer, 0, Input_Buffer_Length );
   Serial.readBytes( m_input_buffer, avail );
@@ -145,11 +155,22 @@ bool parse_input()
       m_command = 'n';
     }
   }
+
+  if( m_update_needed && m_update_finished_function )
+  {
+    m_update_finished_function();
+  }
+  
 }
 
-  void setUpdateCallback( UpdateChannelCBK callback )
+  void setValueChangedCallback( ValueChangedCBK callback )
   {
-    m_updateFunction = callback;
+    m_value_changed_function = callback;
+  }
+
+  void setUpdateFinishedCallback( UpdateFinishedCBK callback )
+  {
+    m_update_finished_function = callback;
   }
   
 private:
@@ -159,17 +180,25 @@ private:
   int  m_idle_counter;
   int  m_active_color; // values range [0..255]
   int  m_active_channel;
-  UpdateChannelCBK m_updateFunction;
+  bool m_update_needed;
+  ValueChangedCBK m_value_changed_function;
+  UpdateFinishedCBK m_update_finished_function;
+  
 };
 
 CommandParser *command_parser;
 
 
-void tlc_updater( int channel, int value)
+void tlc_setter( int channel, int value)
 {
   Tlc.set(channel, value);
+}
+
+void tlc_updater()
+{
   Tlc.update();
 }
+
 
 
 
@@ -179,7 +208,9 @@ void setup()
 {        
   Tlc.init();
   command_parser = new CommandParser();
-  command_parser->setUpdateCallback( tlc_updater );
+  command_parser->setValueChangedCallback( tlc_setter );
+  command_parser->setUpdateFinishedCallback( tlc_updater );
+  
   
 }
 
