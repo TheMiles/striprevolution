@@ -16,14 +16,15 @@
 import os, sys
 
 import serial
+import time
 
 from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import GObject
 
-from threading import Thread
+from threading import Thread, Lock
 
-Gdk.threads_init()
+GObject.threads_init()
 
 SPEED = 9600
 
@@ -34,6 +35,7 @@ class MainWindow:
     def __init__(self):
 
         self.enabled_modules = []
+        self.channel_values = {}
 
         self.builder = Gtk.Builder()
         self.builder.add_from_file(os.path.join(os.getcwd(), 'data/led_control.ui'))
@@ -61,9 +63,11 @@ class MainWindow:
 
         self.connect_serial(self.builder.get_object('button1'))
 
-        self.read_thread = Thread(target=self.receive_data)
-        self.read_thread.start()
 
+        self.channel_values_lock = Lock()
+        Thread(target=self.update_poller).start()
+        Thread(target=self.receive_data).start()
+        
         self.window = self.builder.get_object('window1')
         self.window.show()
 
@@ -80,22 +84,45 @@ class MainWindow:
 
     def channel_changed(self, channel, value):
 
-        for offset in self.enabled_modules:
-            current_channel = offset * 3 + channel
-            self.send_command("c%iv%i" % (current_channel, value) )
+        message = "c%iv%i" % (channel, value)
+        self.send_command( message )
 
 
     def adjustment_changed(self, adjustment):
-        
-        self.channel_changed( adjustment.channel, adjustment.get_value() )
-        
 
+        if( self.channel_values_lock.acquire() ):
+            for offset in self.enabled_modules:
+                current_channel = offset * 3 + adjustment.channel
+                current_value   = adjustment.get_value()
+                if current_value > 0:
+                    current_value   = ((current_value/adjustment.get_upper())**(2.2)) * adjustment.get_upper()
+                self.channel_values[ current_channel ] = current_value
+            self.channel_values_lock.release()
+
+
+    def update_poller(self):
+
+        while True:
+            time.sleep(0.01)
+
+            if self.quitting:
+                break
+            if self.connection:
+                if( self.channel_values_lock.acquire(False) ):
+                    for channel, value in self.channel_values.iteritems():
+                        self.channel_changed( channel, value )
+                    self.channel_values = {}
+                    self.channel_values_lock.release()
+                    
+
+        
     def connect_serial(self, button):
 
         controls = self.builder.get_object('grid1').get_children()
         def set_sensitive(sensitive):
             for c in controls:
                 c.set_sensitive(sensitive)
+
 
         def disconnect():
             button.set_label("Connect")
