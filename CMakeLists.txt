@@ -20,7 +20,7 @@ print_programmer_list()
 #set(ARDUINO_DEFAULT_BOARD atmega328) # Default Board ID, when not specified
 #set(ARDUINO_DEFAULT_PORT /dev/ttyUSB0) # Default Port, when not specified
 
-generate_arduino_firmware(ledrevolution
+generate_arduino_firmware(striprevolution
                           SKETCH .
                           PORT /dev/ttyUSB0
                           BOARD atmega328
