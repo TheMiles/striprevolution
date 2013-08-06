@@ -20,6 +20,11 @@ const uint8_t MAGIC_NUMBER  = 0x42;
 const uint8_t COMMAND_NOP   = 0x00;
 const uint8_t COMMAND_COLOR = 0x01;
 
+const CRGB BLACK = CRGB(  0,   0,   0);
+const CRGB WHITE = CRGB(255, 255, 255);
+const CRGB RED   = CRGB(255,   0,   0);
+const CRGB GREEN = CRGB(  0, 255,   0);
+const CRGB BLUE  = CRGB(  0,   0, 255);
 
 class Buffer
 {
@@ -43,6 +48,7 @@ public:
   CRGB* leds() { return m_leds; }
   uint8_t size() { return m_numLeds; }
 
+  void showColor( const CRGB &color ) { m_data.showColor(color); }
   void show() { m_data.show(); }
 
 
@@ -71,6 +77,37 @@ public:
   void show( Buffer* buffer = NULL) { 
     if( !buffer ) { buffer = front(); }
     buffer->show();
+  }
+
+  void error( uint8_t errorCode )
+  {
+    Buffer *buffer = front();
+
+    buffer->showColor( BLACK );
+    delay(125);
+    buffer->showColor( RED );
+    delay(125);
+    buffer->showColor( BLACK );
+    delay(125);
+    buffer->showColor( RED );
+    delay(125);
+    buffer->showColor( BLACK );
+    delay(500);
+
+    for( uint8_t i=0; i<0; ++i )
+    {
+      buffer->showColor( BLUE );
+      delay(500);
+      buffer->showColor( BLACK );
+      delay(250);
+    }
+
+    buffer->showColor( GREEN );
+    delay(1000);
+    buffer->showColor( BLACK );
+    delay(1000);
+
+
   }
 
 private:
@@ -117,7 +154,9 @@ public:
       case IDLE:
       
         if ( c == MAGIC_NUMBER ) { m_mode = COMMAND; }
+        else { m_buffers.error(1); }
         break;
+
       
       case COMMAND:
 
@@ -125,22 +164,22 @@ public:
         {
         case COMMAND_NOP:   m_mode = IDLE; break;
         case COMMAND_COLOR: m_mode = COLORS_HEAD; break;
-        default:            m_mode = IDLE; break;
+        default:            m_mode = IDLE; m_buffers.error(2); break;
         }
         break;
 
       case COLORS_HEAD:
-        m_numberOfLedsToRead = static_cast< uint8_t >(c);
+        m_numberOfLedsToRead = c;
         m_currentLed = 0;
         m_currentColor = 0;
         m_mode = COLORS_READ;
         break;
 
       case COLORS_READ:
-        m_buffers.backLeds()[m_currentLed][m_currentColor] = static_cast< uint8_t >( c );
+        m_buffers.backLeds()[m_currentLed][m_currentColor] = c;
 
         ++m_currentColor;
-        if( m_currentColor > 3 )
+        if( m_currentColor >= 3 )
         {
           m_currentColor = 0;
 
