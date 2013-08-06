@@ -94,7 +94,7 @@ public:
     buffer->showColor( BLACK );
     delay(500);
 
-    for( uint8_t i=0; i<0; ++i )
+    for( uint8_t i=0; i<errorCode; ++i )
     {
       buffer->showColor( BLUE );
       delay(500);
