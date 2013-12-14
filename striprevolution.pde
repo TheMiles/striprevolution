@@ -13,8 +13,6 @@ const uint8_t NUM_LEDS = 238;
 const uint8_t DATA_PIN = 6;
 
 const int Input_Buffer_Length = 64;
-const int Num_Channels        = 15;
-const int Max_Value           = 4095;
 
 const uint8_t MAGIC_NUMBER  = 0x42;
 const uint8_t COMMAND_NOP   = 0x00;
@@ -34,6 +32,7 @@ public:
   , m_leds( NULL )
   {
     m_leds = reinterpret_cast< CRGB* >(malloc( m_numLeds * sizeof( CRGB ) ));
+    memset( m_leds, 0, m_numLeds * sizeof( CRGB ) );
 
     m_data.setBrightness(255);
     m_data.addLeds<WS2811, 6>(m_leds, m_numLeds);
@@ -77,6 +76,10 @@ public:
   void show( Buffer* buffer = NULL) { 
     if( !buffer ) { buffer = front(); }
     buffer->show();
+  }
+
+  void showColor( CRGB const &color ) {
+    front()->showColor( color );
   }
 
   void error( uint8_t errorCode )
@@ -131,10 +134,11 @@ public:
   CommandParser()  
   : m_mode(IDLE)
   , m_buffers( NUM_LEDS )
-  , m_numberOfLedsToRead( 0 )
-  , m_currentLed(0)
-  , m_currentColor(0)
-  {        
+  , m_numberOfValuesToRead( 0 )
+  , m_currentValueIndex( 0 )
+  {   
+    m_buffers.showColor( BLACK );
+
     Serial.begin(9600);
   }
 
@@ -142,19 +146,44 @@ public:
   {
     int avail = Serial.available();
     memset( m_input_buffer, 0, Input_Buffer_Length );
-    Serial.readBytes( m_input_buffer, avail );
+
+    // Serial.print("parse ");
+    // Serial.print( avail );
+
+    avail = Serial.readBytes( m_input_buffer, avail );
+
+    // Serial.print(" read ");
+    // Serial.println( avail );
+
+    Serial.print( "Read ");
+    for( int i=0; i<avail; ++i )
+    {
+      // check current byte
+      uint8_t c = m_input_buffer[i];
+      Serial.print( c );
+      Serial.print( " " );
+    }
+    Serial.println( " done");
 
     for( int i=0; i<avail; ++i )
     {
       // check current byte
       uint8_t c = m_input_buffer[i];
 
+      // Serial.print(" mode ");
+      // Serial.print( m_mode );
+      // Serial.print(" char ");
+      // Serial.println( c );
+
+
       switch( m_mode )
       {
       case IDLE:
       
         if ( c == MAGIC_NUMBER ) { m_mode = COMMAND; }
-        else { m_buffers.error(1); }
+        else {       
+          Serial.println("wrongMagicNumber");
+        }
         break;
 
       
@@ -164,33 +193,57 @@ public:
         {
         case COMMAND_NOP:   m_mode = IDLE; break;
         case COMMAND_COLOR: m_mode = COLORS_HEAD; break;
-        default:            m_mode = IDLE; m_buffers.error(2); break;
+        default:            m_mode = IDLE; Serial.println("UnknownCommand"); break;
         }
         break;
 
       case COLORS_HEAD:
-        m_numberOfLedsToRead = c;
-        m_currentLed = 0;
-        m_currentColor = 0;
+        m_numberOfValuesToRead = c * 3;
+        m_currentValueIndex = 0;
         m_mode = COLORS_READ;
+        debugcounter = 0;
+        Serial.println("ColorsHead");
         break;
 
       case COLORS_READ:
-        m_buffers.backLeds()[m_currentLed][m_currentColor] = c;
 
-        ++m_currentColor;
-        if( m_currentColor >= 3 )
+        uint8_t* colorValues      = reinterpret_cast< uint8_t* >(m_buffers.backLeds());
+        uint8_t  valuesAvailable  = avail - i;
+        uint8_t  valuesLeft       = m_numberOfValuesToRead - m_currentValueIndex;
+        uint8_t  valuesToRead     = (valuesAvailable < valuesLeft) ? valuesAvailable : valuesLeft;
+
+        Serial.print( debugcounter++ );
+        Serial.print(" Read LED ");
+        Serial.print( valuesToRead );
+        Serial.print(" index ");
+        Serial.print( m_currentValueIndex );
+        Serial.print(" i ");
+        Serial.print( i );
+
+        size_t copyNumber = static_cast< size_t >( valuesToRead );
+
+        memcpy( colorValues + m_currentValueIndex, m_input_buffer + i, copyNumber );
+
+        m_currentValueIndex  = m_currentValueIndex + valuesToRead;
+        i                    = i + valuesToRead;
+
+
+        Serial.print(" AFTER ");
+        Serial.print( valuesToRead );
+        Serial.print( " numberofvalues ");
+        Serial.print( m_numberOfValuesToRead );
+        Serial.print(" index ");
+        Serial.print( m_currentValueIndex );
+        Serial.print(" i ");
+        Serial.println( i );
+
+
+        if( m_currentValueIndex >= m_numberOfValuesToRead )
         {
-          m_currentColor = 0;
+          m_buffers.swapBuffers();
+          m_mode = IDLE;
 
-          ++m_currentLed;
-          if( m_currentLed >= m_numberOfLedsToRead || m_currentLed >= NUM_LEDS )
-          {
-            m_currentLed = 0;
-
-            m_buffers.swapBuffers();
-            m_mode = IDLE;
-          }
+          Serial.println("DoneReading");
         }
         break;
       }
@@ -201,10 +254,10 @@ public:
 private:
   char m_input_buffer[ Input_Buffer_Length ];
   Mode m_mode;
-  uint8_t m_numberOfLedsToRead;
-  uint8_t m_currentLed;
-  uint8_t m_currentColor;
+  uint16_t m_numberOfValuesToRead;
+  uint16_t m_currentValueIndex;
 
+  uint16_t debugcounter;
   DoubleBuffer m_buffers;
 };
 
@@ -213,7 +266,7 @@ CommandParser *command_parser;
 
 void setup() {
   // sanity check delay - allows reprogramming if accidently blowing power w/leds
-  delay(2000);
+  delay(2000); 
 
   command_parser = new CommandParser();
 
