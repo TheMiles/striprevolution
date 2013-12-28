@@ -12,7 +12,8 @@ cmake_minimum_required(VERSION 2.8)
 #====================================================================#
 #  Setup Project                                                     #
 #====================================================================#
-set(ARDUINO_CXX_FLAGS "${ARDUINO_CXX_FLAGS} -std=c++11")
+#set(ARDUINO_CXX_FLAGS "${ARDUINO_CXX_FLAGS} -std=c++11")
+set(ARDUINO_CXX_FLAGS "${ARDUINO_CXX_FLAGS}")
 project(ArduinoExample C CXX)
 
 #print_board_list()
