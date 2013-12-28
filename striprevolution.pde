@@ -18,9 +18,10 @@ const EOrder  RGB_ORDER = GRB;
 
 const int Input_Buffer_Length = 64;
 
-const uint8_t MAGIC_NUMBER  = 0x42;
-const uint8_t COMMAND_NOP   = 0x00;
-const uint8_t COMMAND_COLOR = 0x01;
+const uint8_t MAGIC_NUMBER      = 0x42;
+const uint8_t COMMAND_NOP       = 0x00;
+const uint8_t COMMAND_SEQUENCE  = 0x01;
+const uint8_t COMMAND_COLOR     = 0x02;
 
 class Buffer
 {
@@ -77,7 +78,14 @@ public:
   }
 
   void showColor( CRGB const &color ) {
-    front()->showColor( color );
+  
+    uint8_t* colorValues = reinterpret_cast< uint8_t* >( backLeds() );
+    for( uint8_t i = 0; i < NUM_LEDS; ++i )
+    {
+      memcpy( colorValues + i * sizeof( CRGB ), &color, sizeof( CRGB ) );
+    }
+
+    swapBuffers();
   }
 
   void error( uint8_t errorCode )
@@ -127,6 +135,7 @@ public:
     COMMAND,
     COLORS_HEAD,
     COLORS_READ,
+    SINGLE_COLOR,
   };
 
   CommandParser()  
@@ -141,6 +150,8 @@ public:
 
   bool parse_input()
   {
+    CRGB color;
+
     int avail = Serial.available();
     memset( m_input_buffer, 0, Input_Buffer_Length );
 
@@ -165,11 +176,30 @@ public:
       case COMMAND:
 
         switch( c )
-        {
-        case COMMAND_NOP:   m_mode = IDLE; break;
-        case COMMAND_COLOR: m_mode = COLORS_HEAD; break;
-        default:            m_mode = IDLE; Serial.println("UnknownCommand"); break;
+            {
+        case COMMAND_NOP:       m_mode = IDLE; break;
+        case COMMAND_SEQUENCE:  m_mode = COLORS_HEAD; break;
+        case COMMAND_COLOR:     m_mode = SINGLE_COLOR; break;
+        default:                m_mode = IDLE; Serial.println("UnknownCommand"); break;
         }
+        break;
+
+      case SINGLE_COLOR:
+
+        memcpy( &color, m_input_buffer + i, 3 );
+        i = i + 3;
+        m_buffers.showColor( color );
+
+        Serial.print(" SINGLE_COLOR ");
+        Serial.print( i );
+        Serial.print( " color ");
+        Serial.print( color[0] );
+        Serial.print(", ");
+        Serial.print( color[1] );
+        Serial.print(", ");
+        Serial.print( color[2] );
+        Serial.println( " " );
+
         break;
 
       case COLORS_HEAD:
