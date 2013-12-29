@@ -167,8 +167,9 @@ public:
       case SINGLE_COLOR:
 
         memcpy( &color, m_input_buffer + i, 3 );
-        i = i + 3;
+        i = i + 2;
         m_buffer.showColor( color );
+        m_mode = IDLE;
 
         m_debug && Serial.print(" SINGLE_COLOR ");
         m_debug && Serial.print( i );
