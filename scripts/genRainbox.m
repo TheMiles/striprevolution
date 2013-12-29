@@ -30,7 +30,7 @@ for i=5:size(t,1)
 
   for j=1:numleds
 
-    led_color = 
+    lc_idx =   
     ledID = j
     str = get_ledstr(ledID,R,G,B)
 
