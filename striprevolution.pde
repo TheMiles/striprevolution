@@ -9,7 +9,8 @@
 
 #include "FastSPI_LED2.h"
 
-// echo -e "\x42\x01\x05\x0F\x00\x00" > /dev/ttyUSB0
+
+// echo -e "\x42\x01\x01\x0F\x00\x00" > /dev/ttyUSB0
 
 //const uint8_t NUM_LEDS = 238;
 const uint8_t NUM_LEDS = 5;
@@ -48,7 +49,12 @@ public:
 
   void showColor( const CRGB &color ) { m_data.showColor(color); }
   void show() { m_data.show(); }
-
+  
+  
+  CFastSPI_LED2* data() { return &(m_data); }
+  
+    
+           
 
 private:
 
@@ -146,10 +152,18 @@ public:
   bool parse_input()
   {
     int avail = Serial.available();
+    if (avail <=0)
+    {
+      return true;
+    }
+    
     memset( m_input_buffer, 0, Input_Buffer_Length );
 
     avail = Serial.readBytes( m_input_buffer, avail );
+    if (avail <=0)
+    { return false;} // this should not be possible! 
 
+    Serial.println(m_input_buffer);
     for( int i=0; i<avail; ++i )
     {
       // check current byte
@@ -214,13 +228,12 @@ public:
         Serial.print(" i ");
         Serial.println( i );
 
-
         if( m_currentValueIndex >= m_numberOfValuesToRead )
         {
           m_buffers.swapBuffers();
           m_mode = IDLE;
 
-          Serial.println("DoneReading");
+          //Serial.println("DoneReading");
         }
         break;
       }
@@ -240,14 +253,34 @@ private:
 
 CommandParser *command_parser;
 
+Buffer* led_buffer;
+
+
+
 void setup() {
   // sanity check delay - allows reprogramming if accidently blowing power w/leds
   delay(2000); 
   command_parser = new CommandParser;
+  //led_buffer = new Buffer();
+  //led_buffer->data()->clear();  
+ }
 
-}
+
 
 void loop() {
   command_parser->parse_input();
+  //assert( led_buffer);
+
+  if (false){
+    //CRGB cur_color(0,255,255);  
+    //fill_solid(led_buffer->leds(), led_buffer->size(), cur_color);
+    fill_rainbow(led_buffer->leds(), led_buffer->size(), 0,255/5);
+    led_buffer->data()->setBrightness(5);
+    led_buffer->data()->show();
+  }
+  
+
+  
+  
 }
 
