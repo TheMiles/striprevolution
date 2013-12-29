@@ -1,3 +1,4 @@
+// -*- mode: c++ -*-
 // Uncomment this line if you have any interrupts that are changing pins - this causes the library to be a little bit more cautious
 // #define FAST_SPI_INTERRUPTS_WRITE_PINS 1
 
@@ -7,9 +8,12 @@
 // Uncomment this line if you want to talk to DMX controllers
 // #define FASTSPI_USE_DMX_SIMPLE 1
 
-#include "FastSPI_LED2.h"
+// minicom -b 9600 -D /dev/ttyUSB0
+// echo -en "\x42\x01\x01\x0F\x00\x00" > /dev/ttyUSB0
+// echo -en "\x42\x01\x05\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF" > /dev/ttyUSB0
+// echo -en "\x42\x01\x05\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF" > /dev/ttyUSB0
 
-// echo -e "\x42\x01\x05\x0F\x00\x00" > /dev/ttyUSB0
+#include "FastSPI_LED2.h"
 
 //const uint8_t NUM_LEDS = 238;
 const uint8_t NUM_LEDS = 5;
@@ -18,10 +22,12 @@ const EOrder  RGB_ORDER = GRB;
 
 const int Input_Buffer_Length = 64;
 
-const uint8_t MAGIC_NUMBER  = 0x42;
-const uint8_t COMMAND_NOP   = 0x00;
-const uint8_t COMMAND_COLOR = 0x01;
-
+const uint8_t MAGIC_NUMBER    = 0x42;
+const uint8_t COMMAND_NOP     = 0x0;
+const uint8_t COMMAND_COLOR   = 0x1;
+const uint8_t COMMAND_TEST    = 0x2;
+const uint8_t COMMAND_TESTRAW = 0x3;
+const uint8_t COMMAND_DEBUG   = 0x4;
 
 class Buffer
 {
@@ -47,6 +53,8 @@ public:
   uint8_t size() { return m_numLeds; }
 
   void showColor( const CRGB &color ) { m_data.showColor(color); }
+  void showColor( const CRGB &color, uint8_t brightness )
+        { m_data.showColor(color, brightness); }
   void show() { m_data.show(); }
 
 
@@ -55,70 +63,6 @@ private:
   uint8_t       m_numLeds;
   CRGB*         m_leds;
   CFastSPI_LED2 m_data;
-};
-
-class DoubleBuffer
-{
-public:
-  DoubleBuffer( uint8_t numLeds = NUM_LEDS)
-  : m_front( 0 )
-  {
-    m_buffers[0] = Buffer(numLeds);
-    m_buffers[1] = Buffer(numLeds);
-  }
-
-  Buffer* front() { return &m_buffers[m_front]; }
-  Buffer* back() { return &m_buffers[m_front^1]; }
-
-  CRGB* frontLeds() { return front()->leds(); }
-  CRGB* backLeds() { return back()->leds(); }
-
-  void swapBuffers() { m_front = m_front ^ 1; show(); }
-  void show( Buffer* buffer = NULL) { 
-    if( !buffer ) { buffer = front(); }
-    buffer->show();
-  }
-
-  void showColor( CRGB const &color ) {
-    front()->showColor( color );
-  }
-
-  void error( uint8_t errorCode )
-  {
-    Buffer *buffer = front();
-
-    buffer->showColor( CRGB::Black );
-    delay(125);
-    buffer->showColor( CRGB::Red );
-    delay(125);
-    buffer->showColor( CRGB::Black );
-    delay(125);
-    buffer->showColor( CRGB::Red );
-    delay(125);
-    buffer->showColor( CRGB::Black );
-    delay(500);
-
-    for( uint8_t i=0; i<errorCode; ++i )
-    {
-      buffer->showColor( CRGB::Blue );
-      delay(500);
-      buffer->showColor( CRGB::Black );
-      delay(250);
-    }
-
-    buffer->showColor( CRGB::Green );
-    delay(1000);
-    buffer->showColor( CRGB::Black );
-    delay(1000);
-
-
-  }
-
-private:
-
-  uint8_t m_front;
-  Buffer m_buffers[2];
-
 };
 
 class CommandParser
@@ -137,8 +81,9 @@ public:
   : m_mode(IDLE)
   , m_numberOfValuesToRead( 0 )
   , m_currentValueIndex( 0 )
+  , m_debug( true)
   {   
-    m_buffers.showColor( CRGB::Black );
+    m_buffer.showColor( CRGB::Black );
 
     Serial.begin(9600);
   }
@@ -147,11 +92,19 @@ public:
   {
     int avail = Serial.available();
     memset( m_input_buffer, 0, Input_Buffer_Length );
-
-    avail = Serial.readBytes( m_input_buffer, avail );
-
-    for( int i=0; i<avail; ++i )
+    int rb = Serial.readBytes( m_input_buffer,
+                               (Input_Buffer_Length > avail ?
+                                avail : Input_Buffer_Length ));
+    for( int i=0; i<rb; ++i )
     {
+      m_debug && Serial.print( "Processing byte  ");
+      m_debug && Serial.print( i);
+      m_debug && Serial.print( " of ");
+      m_debug && Serial.print( rb);
+      m_debug && Serial.print( "(");
+      m_debug && Serial.print( avail);
+      m_debug && Serial.println( " total)");
+
       // check current byte
       uint8_t c = m_input_buffer[i];
 
@@ -161,7 +114,7 @@ public:
       
         if ( c == MAGIC_NUMBER ) { m_mode = COMMAND; }
         else {       
-          Serial.println("wrongMagicNumber");
+          m_debug && Serial.println("wrongMagicNumber");
         }
         break;
 
@@ -170,9 +123,33 @@ public:
 
         switch( c )
         {
-        case COMMAND_NOP:   m_mode = IDLE; break;
-        case COMMAND_COLOR: m_mode = COLORS_HEAD; break;
-        default:            m_mode = IDLE; Serial.println("UnknownCommand"); break;
+        case COMMAND_NOP:
+          m_debug && Serial.println("COMMAND_NOP");
+          m_mode = IDLE;
+          break;
+        case COMMAND_COLOR:
+          m_debug && Serial.println("COMMAND_COLOR");
+          m_mode = COLORS_HEAD;
+          break;
+        case COMMAND_TEST:
+          m_debug && Serial.println("COMMAND_TEST");
+          testPattern();
+          m_mode = IDLE;
+          break;
+        case COMMAND_TESTRAW:
+          m_debug && Serial.println("COMMAND_TESTRAW");
+          testPatternRaw();
+          m_mode = IDLE;
+          break;
+        case COMMAND_DEBUG:
+          m_debug && Serial.println("COMMAND_DEBUG");
+          m_debug = !m_debug;
+          m_mode = IDLE;
+          break;
+        default:
+          m_debug && Serial.println("UnknownCommand");
+          m_mode = IDLE;
+          break;
         }
         break;
 
@@ -184,18 +161,18 @@ public:
         break;
 
       case COLORS_READ:
-        uint8_t* colorValues      = reinterpret_cast< uint8_t* >(m_buffers.backLeds());
-        uint8_t  valuesAvailable  = avail - i;
+        uint8_t* colorValues      = reinterpret_cast< uint8_t* >(m_buffer.leds());
+        uint8_t  valuesAvailable  = rb - i;
         uint8_t  valuesLeft       = m_numberOfValuesToRead - m_currentValueIndex;
         uint8_t  valuesToRead     = (valuesAvailable < valuesLeft) ? valuesAvailable : valuesLeft;
 
-        Serial.print( debugcounter++ );
-        Serial.print(" Read LED ");
-        Serial.print( valuesToRead );
-        Serial.print(" index ");
-        Serial.print( m_currentValueIndex );
-        Serial.print(" i ");
-        Serial.print( i );
+        m_debug && Serial.print( debugcounter++ );
+        m_debug && Serial.print(" Read LED ");
+        m_debug && Serial.print( valuesToRead );
+        m_debug && Serial.print(" index ");
+        m_debug && Serial.print( m_currentValueIndex );
+        m_debug && Serial.print(" i ");
+        m_debug && Serial.print( i );
 
         size_t copyNumber = static_cast< size_t >( valuesToRead );
 
@@ -205,28 +182,78 @@ public:
         i                    = i + valuesToRead;
 
 
-        Serial.print(" AFTER ");
-        Serial.print( valuesToRead );
-        Serial.print( " numberofvalues ");
-        Serial.print( m_numberOfValuesToRead );
-        Serial.print(" index ");
-        Serial.print( m_currentValueIndex );
-        Serial.print(" i ");
-        Serial.println( i );
+        m_debug && Serial.print(" AFTER ");
+        m_debug && Serial.print( valuesToRead );
+        m_debug && Serial.print( " numberofvalues ");
+        m_debug && Serial.print( m_numberOfValuesToRead );
+        m_debug && Serial.print(" index ");
+        m_debug && Serial.print( m_currentValueIndex );
+        m_debug && Serial.print(" i ");
+        m_debug && Serial.println( i );
 
 
         if( m_currentValueIndex >= m_numberOfValuesToRead )
         {
-          m_buffers.swapBuffers();
+          m_buffer.show();
           m_mode = IDLE;
 
-          Serial.println("DoneReading");
+          m_debug && Serial.println("DoneReading");
         }
         break;
       }
     }
   }
+  
+  void testPattern( uint8_t brightness=255)
+  {
+    m_buffer.showColor( CRGB::Red, brightness );
+    delay(500);
+    m_buffer.showColor( CRGB::Green, brightness );
+    delay(500);
+    m_buffer.showColor( CRGB::Blue, brightness );
+    delay(500);
+    m_buffer.showColor( CRGB::Magenta, brightness );
+    delay(500);
+    m_buffer.showColor( CRGB::Cyan, brightness );
+    delay(500);
+    m_buffer.showColor( CRGB::Yellow, brightness );
+    delay(500);
+    m_buffer.showColor( CRGB::Black );
+    delay(500);
+  }
 
+  void setRGB( uint8_t* data, uint8_t r, uint8_t g, uint8_t b)
+        {
+          *data     = r;
+          *(data+1) = g;
+          *(data+2) = b;
+        }
+  
+  void testPatternRaw( uint8_t brightness=255)
+  {
+    uint8_t* buf = reinterpret_cast< uint8_t* >(
+        m_buffer.leds());
+    for( uint8_t i=0; i<NUM_LEDS; ++i)
+    {
+      setRGB(buf+3*i, brightness, 0, 0);
+    }
+    m_buffer.show(); delay(500);
+    for( uint8_t i=0; i<NUM_LEDS; ++i)
+    {
+      setRGB(buf+3*i, 0, brightness, 0);
+    }
+    m_buffer.show(); delay(500);
+    for( uint8_t i=0; i<NUM_LEDS; ++i)
+    {
+      setRGB(buf+3*i, 0, 0, brightness);
+    }
+    m_buffer.show(); delay(500);
+    for( uint8_t i=0; i<NUM_LEDS; ++i)
+    {
+      setRGB(buf+3*i, 0, 0, 0);
+    }
+    m_buffer.show(); delay(500);
+  }
   
 private:
   char m_input_buffer[ Input_Buffer_Length ];
@@ -235,7 +262,8 @@ private:
   uint16_t m_currentValueIndex;
 
   uint16_t debugcounter;
-  DoubleBuffer m_buffers;
+  Buffer m_buffer;
+  bool m_debug;
 };
 
 CommandParser *command_parser;
@@ -244,10 +272,11 @@ void setup() {
   // sanity check delay - allows reprogramming if accidently blowing power w/leds
   delay(2000); 
   command_parser = new CommandParser;
-
 }
 
 void loop() {
   command_parser->parse_input();
+  //command_parser->testPatternRaw(10);
+  //command_parser->testPattern();
+  //delay(1000);
 }
-
