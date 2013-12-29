@@ -23,6 +23,7 @@ const uint8_t COMMAND_NOP       = 0x00;
 const uint8_t COMMAND_SEQUENCE  = 0x01;
 const uint8_t COMMAND_COLOR     = 0x02;
 
+
 class Buffer
 {
 public:
@@ -62,8 +63,10 @@ class DoubleBuffer
 public:
   DoubleBuffer( uint8_t numLeds = NUM_LEDS)
   : m_front( 0 )
-  , m_buffers{Buffer(numLeds), Buffer(numLeds)}
-  {}
+  {
+    m_buffers[0] = Buffer(numLeds);
+    m_buffers[1] = Buffer(numLeds);
+  }
 
   Buffer* front() { return &m_buffers[m_front]; }
   Buffer* back() { return &m_buffers[m_front^1]; }
@@ -120,6 +123,7 @@ public:
   }
 
 private:
+
   uint8_t m_front;
   Buffer m_buffers[2];
 
