@@ -23,7 +23,11 @@ Five leds to white
 
 Toggle debug output
 		
-		echo -en "\x42\x4" > /dev/ttyUSB0
+		echo -en "\x42\x68" > /dev/ttyUSB0
+
+All LEDs off
+		
+		echo -en "\x42\x69" > /dev/ttyUSB0
 
 
 Commands
@@ -38,9 +42,11 @@ Command           | code |    data length    |        description
  `NOOP`           |    0 |                 0 | no op
  `COLOR_VALUES`   |    1 |   see description | Set a number of leds. The *first byte* contains the **number** of remaining rgb values. Following is `number * 3` bytes in RGB order.
  `UNICOLOR`       |    2 |                 3 | Sets given color on all elements of the strip. The following three bytes contain the color in RGB order.
- `SINGLE_COLOR`   |    5 |                 3 | Sets given color on all elements of the strip. The following three bytes contain the color in RGB order.
- `TEST`           |    3 |                 0 | 
- `TESTRAW`        |    4 |                 0 | 
- `DEBUG`          |    6 |                 0 | Toggles debug feedback output via serial port. [on/off]
-
-
+ `SINGLE_COLOR`   |    3 |                 3 | Sets given color on all elements of the strip. The following three bytes contain the color in RGB order.
+ `BRIGHT`         |    4 |                 1 | Sets brightness to given value.
+ `RAINBOW`        |    5 |                 0 | Sets all LEDs to a rainbow pattern.
+ `TEST`           |   61 |                 0 | 
+ `TESTRAW`        |   62 |                 0 | 
+ `CONF`           |   67 |                 0 | Queries number of LEDs.
+ `DEBUG`          |   68 |                 0 | Toggles debug feedback output via serial port. [on/off]
+ `RESET`          |   69 |                 0 | Sets all LEDs to black.

@@ -1,4 +1,4 @@
-import colorsys, math,serial, sys, time
+import colorsys, math, serial, signal, sys, time
 import alsaaudio, time, audioop
 
 speed = 9600
@@ -69,7 +69,6 @@ class AudioTest:
         while not l:
             time.sleep(.001)
             l,data = self.inp.read()
-            print type(data)
         val = float(audioop.max(data, 2))
         if val < self.audioMin: self.audioMin = val
         if val > self.audioMax: self.audioMax = val
@@ -85,18 +84,34 @@ class AudioTest:
         self.val -= self.decay
         return bytearray(msg)
 
+doIterate = True
+def signal_handler(signal, frame):
+    print "Caught SIGINT, stopping"
+    globals()['doIterate'] = False
+
 def main():
     conn = None
     try:
-        conn = serial.Serial(port, speed, timeout=0,
-                             stopbits=serial.STOPBITS_ONE)
+        print "Opening '%s'" % port
+        conn = serial.Serial(port, speed, timeout=1)
+        time.sleep(0.1)
     except serial.serialutil.SerialException, e: print e
     if not conn: sys.exit(1)
-    #r = Rainbow( 0x5F, num_leds)
-    r = AudioTest( 0x5F, num_leds)
-    while True:
+    print "Starting effect"
+    r = Rainbow( 0x5F, 5)
+    #r = AudioTest( 0x5F, 5)
+    
+    signal.signal(signal.SIGINT, signal_handler)
+    while doIterate:
+        avail = conn.inWaiting()
+        if avail > 0:
+            print "Reading %d bytes" % avail
+            print conn.read(avail)
         conn.write(r.iterate())
         time.sleep(1/50.)
+    print "Sending COMMAND_RESET"
+    conn.write( bytearray( [0x42, 0x69] ))
+    print "Exiting"
         
 if __name__ == "__main__":
     main()

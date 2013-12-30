@@ -64,7 +64,7 @@ public:
 
 
 private:
-  uint8_t       m_numLeds;
+   uint8_t       m_numLeds;
   CRGB*         m_leds;
   CFastSPI_LED2 m_data;
 };
@@ -90,13 +90,14 @@ public:
       COMMAND_NOP          = 0x0,
       COMMAND_COLOR        = 0x1,
       COMMAND_UNICOLOR     = 0x2,
-      COMMAND_SINGLE_COLOR = 0x5,
-      COMMAND_TEST         = 0x3,
-      COMMAND_TESTRAW      = 0x4,
-      COMMAND_DEBUG        = 0x6,
-      COMMAND_BRIGHT       = 0x7,
-      COMMAND_RAINBOW      = 0x8,
-      COMMAND_CONF         = 0x9
+      COMMAND_SINGLE_COLOR = 0x3,
+      COMMAND_BRIGHT       = 0x4,
+      COMMAND_RAINBOW      = 0x5,
+      COMMAND_TEST         = 0x61,
+      COMMAND_TESTRAW      = 0x62,
+      COMMAND_CONF         = 0x67,
+      COMMAND_DEBUG        = 0x68,
+      COMMAND_RESET        = 0x69
   };
   
   CommandParser()  
@@ -117,14 +118,13 @@ public:
           m_input_buffer = 0;
         }
   
-  bool parse_input()
+  void parse_input()
   {
     CRGB color;
 
     int avail = Serial.available();
-    if (avail <=0)
-    {return true;}
-    
+    if( avail <= 0)
+        return;
     memset( m_input_buffer, 0, m_bufsize );
     int rb = Serial.readBytes( m_input_buffer,
                                (m_bufsize > avail ? avail : m_bufsize ));
@@ -152,7 +152,7 @@ public:
       case IDLE:
         if ( c == m_magic ) { m_mode = COMMAND; }
         else {       
-          m_debug && Serial.println("ERROR: Wrong magic number");
+          Serial.println("ERROR: Wrong magic number");
         }
         break;
       
@@ -206,6 +206,10 @@ public:
           m_buffer.rainbow();
           m_mode = IDLE;
           m_debug && Serial.println("SET_RAINBOW");
+        case COMMAND_RESET:
+          m_debug && Serial.println("COMMAND_RESET");
+          m_buffer.showColor( CRGB::Black );
+          m_mode = IDLE;
           break;
         case COMMAND_CONF:
           m_debug && Serial.println("COMMAND_CONF");
@@ -218,7 +222,7 @@ public:
 
         default:
           m_mode = IDLE;
-          m_debug && Serial.println("ERROR: Unknown command");
+          Serial.println("ERROR: Unknown command");
           break;
         }
         break;
