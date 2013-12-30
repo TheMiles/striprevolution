@@ -1,9 +1,10 @@
-import colorsys, math, serial, signal, sys, time
-import alsaaudio, time, audioop
+import colorsys, math, serial, signal, sys, time, os
+# import alsaaudio, time, audioop
 
 speed = 9600
 
-port = "/dev/tty.usbserial-A4006Fho"
+ports = ["/dev/ttyUSB0","/dev/tty.usbserial-A4006Fho"]
+
 # port = "/dev/ttyUSB0"
 conn = None
 
@@ -95,6 +96,8 @@ def signal_handler(signal, frame):
 
 def main():
     conn = None
+
+    port = next( p for p in ports if os.path.exists(p) )
     try:
         print "Opening '%s'" % port
         conn = serial.Serial(port, speed, timeout=1)
