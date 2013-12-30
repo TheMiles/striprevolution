@@ -37,9 +37,10 @@ Command           | code |    data length    |        description
 ------------------|------|-------------------|-------------------------------
  `NOOP`           |    0 |                 0 | no op
  `COLOR_VALUES`   |    1 |   see description | Set a number of leds. The *first byte* contains the **number** of remaining rgb values. Following is `number * 3` bytes in RGB order.
- `TEST`           |    2 |                 0 | 
- `TESTRAW`        |    3 |                 0 | 
- `DEBUG`          |    4 |                 0 | Toggles debug feedback output via serial port. [on/off]
- `CONSTANT_COLOR` |    5 |                 3 | Sets given color on all elements of the strip. The following three bytes contain the color in RGB order.
+ `UNICOLOR`       |    2 |                 3 | Sets given color on all elements of the strip. The following three bytes contain the color in RGB order.
+ `SINGLE_COLOR`   |    5 |                 3 | Sets given color on all elements of the strip. The following three bytes contain the color in RGB order.
+ `TEST`           |    3 |                 0 | 
+ `TESTRAW`        |    4 |                 0 | 
+ `DEBUG`          |    6 |                 0 | Toggles debug feedback output via serial port. [on/off]
 
 
