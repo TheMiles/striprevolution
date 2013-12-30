@@ -12,6 +12,9 @@
 // echo -en "\x42\x01\x01\x0F\x00\x00" > /dev/ttyUSB0
 // echo -en "\x42\x01\x05\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF" > /dev/ttyUSB0
 // echo -en "\x42\x01\x05\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF" > /dev/ttyUSB0
+//
+// Toggle debug output:
+// echo -en "\x42\x4" > /dev/ttyUSB0
 
 #include "FastSPI_LED2.h"
 
@@ -28,6 +31,7 @@ const uint8_t COMMAND_COLOR   = 0x1;
 const uint8_t COMMAND_TEST    = 0x2;
 const uint8_t COMMAND_TESTRAW = 0x3;
 const uint8_t COMMAND_DEBUG   = 0x4;
+const uint8_t COMMAND_SINGLE_COLOR   = 0x5;
 
 class Buffer
 {
@@ -75,6 +79,7 @@ public:
     COMMAND,
     COLORS_HEAD,
     COLORS_READ,
+    SINGLE_COLOR,
   };
 
   CommandParser()  
@@ -90,6 +95,8 @@ public:
 
   bool parse_input()
   {
+    CRGB color;
+
     int avail = Serial.available();
     memset( m_input_buffer, 0, Input_Buffer_Length );
     int rb = Serial.readBytes( m_input_buffer,
@@ -146,11 +153,34 @@ public:
           m_debug = !m_debug;
           m_mode = IDLE;
           break;
+        case COMMAND_SINGLE_COLOR:
+          m_debug && Serial.println("COMMAND_SINGLE_COLOR");
+          m_mode = SINGLE_COLOR;
+          break;
         default:
           m_debug && Serial.println("UnknownCommand");
           m_mode = IDLE;
           break;
         }
+        break;
+
+      case SINGLE_COLOR:
+
+        memcpy( &color, m_input_buffer + i, 3 );
+        i = i + 2;
+        m_buffer.showColor( color );
+        m_mode = IDLE;
+
+        m_debug && Serial.print(" SINGLE_COLOR ");
+        m_debug && Serial.print( i );
+        m_debug && Serial.print( " color ");
+        m_debug && Serial.print( color[0] );
+        m_debug && Serial.print(", ");
+        m_debug && Serial.print( color[1] );
+        m_debug && Serial.print(", ");
+        m_debug && Serial.print( color[2] );
+        m_debug && Serial.println( " " );
+
         break;
 
       case COLORS_HEAD:
