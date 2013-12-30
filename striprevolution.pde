@@ -16,6 +16,7 @@
 
 #include "FastSPI_LED2.h"
 
+
 //const uint8_t NUM_LEDS = 238;
 const uint8_t NUM_LEDS = 5;
 const uint8_t DATA_PIN = 6;
@@ -94,7 +95,8 @@ public:
       COMMAND_TESTRAW      = 0x4,
       COMMAND_DEBUG        = 0x6,
       COMMAND_BRIGHT       = 0x7,
-      COMMAND_RAINBOW      = 0x8
+      COMMAND_RAINBOW      = 0x8,
+      COMMAND_CONF         = 0x9
   };
   
   CommandParser()  
@@ -205,6 +207,15 @@ public:
           m_mode = IDLE;
           m_debug && Serial.println("SET_RAINBOW");
           break;
+        case COMMAND_CONF:
+          m_debug && Serial.println("COMMAND_CONF");
+          m_buffer.rainbow();
+          m_mode = IDLE;
+          char tmp[32];
+          sprintf(&(tmp[0]),"#NUMLEDS=%u",m_buffer.size());
+          Serial.println(tmp);
+          break;
+
         default:
           m_mode = IDLE;
           m_debug && Serial.println("ERROR: Unknown command");
