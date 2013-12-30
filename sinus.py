@@ -2,7 +2,25 @@ import colorsys, math,serial, sys, time
 import alsaaudio, time, audioop
 
 speed = 9600
+
+#port = "/dev/tty.usbserial-A4006Fho"
 port = "/dev/ttyUSB0"
+conn = None
+
+num_leds=5
+max_intensity=0xff
+stepsize=math.pi/32.
+
+def sinus( v, phase ):
+
+    return map( lambda i: int( math.pow( math.sin( phase + i * stepsize * 2), 2 ) * 255.5 ), v )
+
+
+def clamp( v, max_value , min_value ):
+
+    return map( lambda x: max( min_value, min( max_value, x )), v )
+
+
 
 class Rainbow:
     def __init__(self,max,nleds):
@@ -44,6 +62,7 @@ class AudioTest:
         self.audioMin = 1
         self.audioMax = 0
 
+
     def iterate(self):
         # Read data from device
         l,data = self.inp.read()
@@ -73,8 +92,8 @@ def main():
                              stopbits=serial.STOPBITS_ONE)
     except serial.serialutil.SerialException, e: print e
     if not conn: sys.exit(1)
-    #r = Rainbow( 0x5F, 5)
-    r = AudioTest( 0x5F, 5)
+    #r = Rainbow( 0x5F, num_leds)
+    r = AudioTest( 0x5F, num_leds)
     while True:
         conn.write(r.iterate())
         time.sleep(1/50.)
