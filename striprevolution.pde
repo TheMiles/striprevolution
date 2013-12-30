@@ -29,6 +29,8 @@ const uint8_t COMMAND_COLOR   = 0x1;
 const uint8_t COMMAND_TEST    = 0x2;
 const uint8_t COMMAND_TESTRAW = 0x3;
 const uint8_t COMMAND_DEBUG   = 0x4;
+const uint8_t COMMAND_BRIGHT  = 0x5;
+const uint8_t COMMAND_RAINBOW  = 0x69;
 
 class Buffer
 {
@@ -59,7 +61,16 @@ public:
   void showColor( const CRGB &color, uint8_t brightness )
         { m_data.showColor(color, brightness); }
   void show() { m_data.show(); }
-
+  void setBrightness(uint8_t brightness )
+        {
+          m_data.show(brightness);
+        }
+  void rainbow()
+        {
+          fill_rainbow(leds(), size(), 0, uint8_t(255/size()) );
+          m_data.show();
+        }
+            
 
 private:
 
@@ -78,6 +89,8 @@ public:
     COMMAND,
     COLORS_HEAD,
     COLORS_READ,
+    SET_BRIGHT,
+    SET_RAINBOW
   };
 
   CommandParser()  
@@ -155,6 +168,14 @@ public:
           m_debug = !m_debug;
           m_mode = IDLE;
           break;
+        case COMMAND_BRIGHT:
+          m_debug && Serial.println("COMMAND_BRIGHT");
+          m_mode = SET_BRIGHT;
+          break;
+        case COMMAND_RAINBOW:
+          m_debug && Serial.println("COMMAND_RAINBOW");
+          m_mode = SET_RAINBOW;
+          break;
         default:
           m_debug && Serial.println("UnknownCommand");
           m_mode = IDLE;
@@ -162,6 +183,21 @@ public:
         }
         break;
 
+      case SET_BRIGHT:
+      {
+        uint8_t  bright_val = c;
+        m_buffer.setBrightness(bright_val);
+        m_mode = IDLE;
+        m_debug && Serial.println("SET_BRIGHT");
+        break;
+      }
+      case SET_RAINBOW:
+      {
+        m_buffer.rainbow();
+        m_debug && Serial.println("SET_RAINBOW");
+        m_mode = IDLE;
+        break;
+      }
       case COLORS_HEAD:
         m_numberOfValuesToRead = c * 3;
         m_currentValueIndex = 0;
@@ -298,7 +334,7 @@ void loop() {
   if (false){
     //CRGB cur_color(0,255,255);  
     //fill_solid(led_buffer->leds(), led_buffer->size(), cur_color);
-    fill_rainbow(led_buffer->leds(), led_buffer->size(), 0,255/5);
+    
     led_buffer->data()->setBrightness(5);
     led_buffer->data()->show();
   }
