@@ -51,6 +51,16 @@ public:
         { m_data.showColor(color, brightness); }
   void show() { m_data.show(); }
 
+ void setBrightness(uint8_t brightness )
+        {
+          m_data.show(brightness);
+        }
+  void rainbow()
+        {
+          fill_rainbow(leds(), size(), 0, uint8_t(255/size()) );
+          m_data.show();
+        }
+
 
 private:
   uint8_t       m_numLeds;
@@ -68,8 +78,25 @@ public:
     COMMAND,
     COLORS_HEAD,
     COLORS_READ,
+    SINGLE_COLOR,
+    COLORS_ALL,
+    SET_BRIGHT,
+    SET_RAINBOW
   };
 
+  enum Command
+  {
+      COMMAND_NOP          = 0x0,
+      COMMAND_COLOR        = 0x1,
+      COMMAND_UNICOLOR     = 0x2,
+      COMMAND_SINGLE_COLOR = 0x5,
+      COMMAND_TEST         = 0x3,
+      COMMAND_TESTRAW      = 0x4,
+      COMMAND_DEBUG        = 0x6,
+      COMMAND_BRIGHT       = 0x7,
+      COMMAND_RAINBOW      = 0x8
+  };
+  
   CommandParser()  
   : m_bufsize( 256 )
   , m_mode(IDLE)
@@ -168,12 +195,34 @@ public:
           m_debug && Serial.println("COMMAND_SINGLE_COLOR");
           m_mode = SINGLE_COLOR;
           break;
+        case COMMAND_BRIGHT:
+          m_debug && Serial.println("COMMAND_BRIGHT");
+          m_mode = SET_BRIGHT;
+          break;
+        case COMMAND_RAINBOW:
+          m_debug && Serial.println("COMMAND_RAINBOW");
+          m_buffer.rainbow();
+          m_mode = IDLE;
+          m_debug && Serial.println("SET_RAINBOW");
+          break;
         default:
           m_mode = IDLE;
           m_debug && Serial.println("ERROR: Unknown command");
           break;
         }
         break;
+
+      case SET_BRIGHT:
+      {
+        uint8_t  bright_val = m_input_buffer[i];
+        m_buffer.setBrightness(bright_val);
+        m_mode = IDLE;
+      
+        m_debug && Serial.print("SET_BRIGHT");
+        m_debug && Serial.println( bright_val);
+        //m_debug && Serial.println();
+        break;
+      }
 
       case SINGLE_COLOR:
 
