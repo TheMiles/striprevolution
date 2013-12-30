@@ -209,7 +209,6 @@ public:
           break;
         case COMMAND_CONF:
           m_debug && Serial.println("COMMAND_CONF");
-          m_buffer.rainbow();
           m_mode = IDLE;
           char tmp[32];
           sprintf(&(tmp[0]),"#NUMLEDS=%u",m_buffer.size());
