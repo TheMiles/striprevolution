@@ -50,3 +50,4 @@ Command           | code |    data length    |        description
  `CONF`           |   67 |                 0 | Queries number of LEDs.
  `DEBUG`          |   68 |                 0 | Toggles debug feedback output via serial port. [on/off]
  `RESET`          |   69 |                 0 | Sets all LEDs to black.
+ `SETSIZE`        |   70 |                 1 | resizes the current length of the strip to the new number of leds given in the first byte. The current values of the leds are resetted. 

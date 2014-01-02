@@ -18,7 +18,7 @@
 
 
 //const uint8_t NUM_LEDS = 238;
-const uint8_t NUM_LEDS = 5;
+const uint8_t NUM_LEDS = 255;
 const uint8_t DATA_PIN = 6;
 const EOrder  RGB_ORDER = GRB;
 
@@ -82,7 +82,8 @@ public:
     SINGLE_COLOR,
     COLORS_ALL,
     SET_BRIGHT,
-    SET_RAINBOW
+    SET_RAINBOW,
+    SET_SIZE,
   };
 
   enum Command
@@ -97,7 +98,8 @@ public:
       COMMAND_TESTRAW      = 0x62,
       COMMAND_CONF         = 0x67,
       COMMAND_DEBUG        = 0x68,
-      COMMAND_RESET        = 0x69
+      COMMAND_RESET        = 0x69,
+      COMMAND_SETSIZE      = 0x70,
   };
   
   CommandParser()  
@@ -188,8 +190,8 @@ public:
           m_debug && Serial.println("OK");
           break;
         case COMMAND_DEBUG:
-          m_debug && Serial.println("COMMAND_DEBUG");
           m_debug = !m_debug;
+          m_debug && Serial.println("COMMAND_DEBUG");
           m_mode = IDLE;
           m_debug && Serial.println("OK");
           break;
@@ -218,7 +220,10 @@ public:
           sprintf(&(tmp[0]),"#NUMLEDS=%u",m_buffer.size());
           Serial.println(tmp);
           break;
-
+        case COMMAND_SETSIZE:
+          m_debug && Serial.println("COMMAND_SETSIZE");
+          m_mode = SET_SIZE;
+          break;
         default:
           m_mode = IDLE;
           Serial.println("ERROR: Unknown command");
@@ -233,8 +238,18 @@ public:
         m_mode = IDLE;
       
         m_debug && Serial.print("SET_BRIGHT");
-        m_debug && Serial.println( bright_val);
+        m_debug && Serial.println( bright_val );
         //m_debug && Serial.println();
+        break;
+      }
+
+      case SET_SIZE:
+      {
+        uint8_t new_size = m_input_buffer[i];
+        m_buffer = Buffer( new_size );
+        m_mode = IDLE;
+        m_debug && Serial.print("SET_SIZE");
+        m_debug && Serial.println( new_size );
         break;
       }
 
@@ -370,22 +385,22 @@ public:
   {
     uint8_t* buf = reinterpret_cast< uint8_t* >(
         m_buffer.leds());
-    for( uint8_t i=0; i<NUM_LEDS; ++i)
+    for( uint8_t i=0; i<m_buffer.size(); ++i)
     { // Red
       setRGB(buf+3*i, brightness, 0, 0);
     }
     m_buffer.show(); delay(500);
-    for( uint8_t i=0; i<NUM_LEDS; ++i)
+    for( uint8_t i=0; i<m_buffer.size(); ++i)
     { // Green
       setRGB(buf+3*i, 0, brightness, 0);
     }
     m_buffer.show(); delay(500);
-    for( uint8_t i=0; i<NUM_LEDS; ++i)
+    for( uint8_t i=0; i<m_buffer.size(); ++i)
     { // Blue
       setRGB(buf+3*i, 0, 0, brightness);
     }
     m_buffer.show(); delay(500);
-    for( uint8_t i=0; i<NUM_LEDS; ++i)
+    for( uint8_t i=0; i<m_buffer.size(); ++i)
     { // Black
       setRGB(buf+3*i, 0, 0, 0);
     }
