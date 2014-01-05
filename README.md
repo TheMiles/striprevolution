@@ -33,21 +33,21 @@ All LEDs off
 Commands
 --------
 
-Each command block has to start showing a magic number 66 in the first byte.
+Each command block has to start showing a magic number 66 (0x42) in the first byte.
 
 The second byte shows the command
 
 Command           | code |    data length    |        description
 ------------------|------|-------------------|-------------------------------
- `NOOP`           |    0 |                 0 | no op
- `COLOR_VALUES`   |    1 |   see description | Set a number of leds. The *first byte* contains the **number** of remaining rgb values. Following is `number * 3` bytes in RGB order.
- `UNICOLOR`       |    2 |                 3 | Sets given color on all elements of the strip. The following three bytes contain the color in RGB order.
- `SINGLE_COLOR`   |    3 |                 3 | Sets given color on all elements of the strip. The following three bytes contain the color in RGB order.
- `BRIGHT`         |    4 |                 1 | Sets brightness to given value.
- `RAINBOW`        |    5 |                 0 | Sets all LEDs to a rainbow pattern.
- `TEST`           |   61 |                 0 | 
- `TESTRAW`        |   62 |                 0 | 
- `CONF`           |   67 |                 0 | Queries number of LEDs.
- `DEBUG`          |   68 |                 0 | Toggles debug feedback output via serial port. [on/off]
- `RESET`          |   69 |                 0 | Sets all LEDs to black.
- `SETSIZE`        |   70 |                 1 | resizes the current length of the strip to the new number of leds given in the first byte. The current values of the leds are resetted. 
+ `NOOP`           | 0x00 |                 0 | no op
+ `COLOR_VALUES`   | 0x01 |   see description | Set a number of leds. The *first byte* contains the **number** of remaining rgb values. Following is `number * 3` bytes in RGB order.
+ `UNICOLOR`       | 0x02 |                 3 | Sets given color on all elements of the strip. The following three bytes contain the color in RGB order.
+ `SINGLE_COLOR`   | 0x03 |                 3 | Sets given color on all elements of the strip. The following three bytes contain the color in RGB order.
+ `BRIGHT`         | 0x04 |                 1 | Sets brightness to given value.
+ `RAINBOW`        | 0x05 |                 0 | Sets all LEDs to a rainbow pattern.
+ `TEST`           | 0x61 |                 0 | 
+ `TESTRAW`        | 0x62 |                 0 | 
+ `CONF`           | 0x67 |                 0 | Queries number of LEDs.
+ `DEBUG`          | 0x68 |                 0 | Toggles debug feedback output via serial port. [on/off]
+ `RESET`          | 0x69 |                 0 | Sets all LEDs to black.
+ `SETSIZE`        | 0x70 |                 1 | resizes the current length of the strip to the new number of leds given in the first byte. The current values of the leds are resetted. 
