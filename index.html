@@ -28,37 +28,132 @@
 
     <div class="container">
       <section id="main_content">
-        <h3>
-<a name="welcome-to-github-pages" class="anchor" href="#welcome-to-github-pages"><span class="octicon octicon-link"></span></a>Welcome to GitHub Pages.</h3>
+        <h1></h1>
 
-<p>This automatic page generator is the easiest way to create beautiful pages for all of your projects. Author your page content here using GitHub Flavored Markdown, select a template crafted by a designer, and publish. After your page is generated, you can check out the new branch:</p>
+<h1>
+<a name="striprevolution" class="anchor" href="#striprevolution"><span class="octicon octicon-link"></span></a>striprevolution</h1>
 
-<pre><code>$ cd your_repo_root/repo_name
-$ git fetch origin
-$ git checkout gh-pages
+<p>Running a strip of WS2811 based LEDs.</p>
+
+<p>Can be controled via serial port. </p>
+
+<h2>
+<a name="usage" class="anchor" href="#usage"><span class="octicon octicon-link"></span></a>Usage</h2>
+
+<p>To get debug output from the arduino you can use minicom:</p>
+
+<pre><code>    minicom -b 9600 -D /dev/ttyUSB0
 </code></pre>
 
-<p>If you're using the GitHub for Mac, simply sync your repository and you'll see the new branch.</p>
+<p>First led to dark red</p>
 
-<h3>
-<a name="designer-templates" class="anchor" href="#designer-templates"><span class="octicon octicon-link"></span></a>Designer Templates</h3>
+<pre><code>    echo -en "\x42\x01\x01\x0F\x00\x00" &gt; /dev/ttyUSB0
+</code></pre>
 
-<p>We've crafted some handsome templates for you to use. Go ahead and continue to layouts to browse through them. You can easily go back to edit your page before publishing. After publishing your page, you can revisit the page generator and switch to another theme. Your Page content will be preserved if it remained markdown format.</p>
+<p>Five leds to white</p>
 
-<h3>
-<a name="rather-drive-stick" class="anchor" href="#rather-drive-stick"><span class="octicon octicon-link"></span></a>Rather Drive Stick?</h3>
+<pre><code>    echo -en "\x42\x01\x05\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF" &gt; /dev/ttyUSB0
+</code></pre>
 
-<p>If you prefer to not use the automatic generator, push a branch named <code>gh-pages</code> to your repository to create a page manually. In addition to supporting regular HTML content, GitHub Pages support Jekyll, a simple, blog aware static site generator written by our own Tom Preston-Werner. Jekyll makes it easy to create site-wide headers and footers without having to copy them across every page. It also offers intelligent blog support and other advanced templating features.</p>
+<p>Toggle debug output</p>
 
-<h3>
-<a name="authors-and-contributors" class="anchor" href="#authors-and-contributors"><span class="octicon octicon-link"></span></a>Authors and Contributors</h3>
+<pre><code>    echo -en "\x42\x68" &gt; /dev/ttyUSB0
+</code></pre>
 
-<p>You can <a href="https://github.com/blog/821" class="user-mention">@mention</a> a GitHub username to generate a link to their profile. The resulting <code>&lt;a&gt;</code> element will link to the contributor's GitHub Profile. For example: In 2007, Chris Wanstrath (<a href="https://github.com/defunkt" class="user-mention">@defunkt</a>), PJ Hyett (<a href="https://github.com/pjhyett" class="user-mention">@pjhyett</a>), and Tom Preston-Werner (<a href="https://github.com/mojombo" class="user-mention">@mojombo</a>) founded GitHub.</p>
+<p>All LEDs off</p>
 
-<h3>
-<a name="support-or-contact" class="anchor" href="#support-or-contact"><span class="octicon octicon-link"></span></a>Support or Contact</h3>
+<pre><code>    echo -en "\x42\x69" &gt; /dev/ttyUSB0
+</code></pre>
 
-<p>Having trouble with Pages? Check out the documentation at <a href="http://help.github.com/pages">http://help.github.com/pages</a> or contact <a href="mailto:support@github.com">support@github.com</a> and we’ll help you sort it out.</p>
+<h2>
+<a name="commands" class="anchor" href="#commands"><span class="octicon octicon-link"></span></a>Commands</h2>
+
+<p>Each command block has to start showing a magic number 66 (0x42) in the first byte.</p>
+
+<p>The second byte shows the command</p>
+
+<table>
+<thead><tr>
+<th>Command</th>
+<th>code</th>
+<th>data length</th>
+<th>description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code>NOOP</code></td>
+<td>0x00</td>
+<td>0</td>
+<td>no op</td>
+</tr>
+<tr>
+<td><code>COLOR_VALUES</code></td>
+<td>0x01</td>
+<td>see description</td>
+<td>Set a number of leds. The <em>first byte</em> contains the <strong>number</strong> of remaining rgb values. Following is <code>number * 3</code> bytes in RGB order.</td>
+</tr>
+<tr>
+<td><code>UNICOLOR</code></td>
+<td>0x02</td>
+<td>3</td>
+<td>Sets given color on all elements of the strip. The following three bytes contain the color in RGB order.</td>
+</tr>
+<tr>
+<td><code>SINGLE_COLOR</code></td>
+<td>0x03</td>
+<td>3</td>
+<td>Sets given color on all elements of the strip. The following three bytes contain the color in RGB order.</td>
+</tr>
+<tr>
+<td><code>BRIGHT</code></td>
+<td>0x04</td>
+<td>1</td>
+<td>Sets brightness to given value.</td>
+</tr>
+<tr>
+<td><code>RAINBOW</code></td>
+<td>0x05</td>
+<td>0</td>
+<td>Sets all LEDs to a rainbow pattern.</td>
+</tr>
+<tr>
+<td><code>TEST</code></td>
+<td>0x61</td>
+<td>0</td>
+<td></td>
+</tr>
+<tr>
+<td><code>TESTRAW</code></td>
+<td>0x62</td>
+<td>0</td>
+<td></td>
+</tr>
+<tr>
+<td><code>CONF</code></td>
+<td>0x67</td>
+<td>0</td>
+<td>Queries number of LEDs.</td>
+</tr>
+<tr>
+<td><code>DEBUG</code></td>
+<td>0x68</td>
+<td>0</td>
+<td>Toggles debug feedback output via serial port. [on/off]</td>
+</tr>
+<tr>
+<td><code>RESET</code></td>
+<td>0x69</td>
+<td>0</td>
+<td>Sets all LEDs to black.</td>
+</tr>
+<tr>
+<td><code>SETSIZE</code></td>
+<td>0x70</td>
+<td>1</td>
+<td>resizes the current length of the strip to the new number of leds given in the first byte. The current values of the leds are resetted.</td>
+</tr>
+</tbody>
+</table>
       </section>
     </div>
 
