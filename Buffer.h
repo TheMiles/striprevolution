@@ -1,5 +1,12 @@
+// -*- mode: c++ -*-
+// Uncomment this line if you have any interrupts that are changing pins - this causes the library to be a little bit more cautious
+// #define FAST_SPI_INTERRUPTS_WRITE_PINS 1
 
+// Uncomment this line to force always using software, instead of hardware, SPI (why?)
+// #define FORCE_SOFTWARE_SPI 1
 
+// Uncomment this line if you want to talk to DMX controllers
+// #define FASTSPI_USE_DMX_SIMPLE 1
 #include "FastSPI_LED2.h"
 
 
