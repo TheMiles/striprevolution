@@ -13,14 +13,29 @@
 // echo -en "\x42\x01\x05\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF" > /dev/ttyUSB0
 // echo -en "\x42\x01\x05\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF" > /dev/ttyUSB0
 // echo -e "\x42\x01\x05\x0F\x00\x00" > /dev/ttyUSB0
+  enum Mode
+  {
+    IDLE,
+    COMMAND,
+    COLORS_HEAD,
+    COLORS_READ,
+    SINGLE_COLOR,
+    COLORS_ALL,
+    SET_BRIGHT,
+    SET_RAINBOW,
+    SET_SIZE,
+  };
 
 #include "FastSPI_LED2.h"
 
 
 //const uint8_t NUM_LEDS = 238;
-const uint8_t NUM_LEDS = 255;
-const uint8_t DATA_PIN = 6;
-const EOrder  RGB_ORDER = GRB;
+const uint8_t  NUM_LEDS = 255;
+const uint8_t  DATA_PIN = 6;
+const EOrder   RGB_ORDER = GRB;
+const uint16_t LOG_STRING_LENGTH = 1024;
+
+
 
 class Buffer
 {
@@ -47,12 +62,25 @@ public:
     
   uint8_t size() const { return m_numLeds; }
 
-  void showColor( const CRGB &color ) { m_data.showColor(color); }
-  void showColor( const CRGB &color, uint8_t brightness )
-        { m_data.showColor(color, brightness); }
+  void showColor( const CRGB &color ) 
+  { 
+    for( uint8_t i = 0; i < m_numLeds; ++i )
+    {
+      memcpy( m_leds + i, &color, sizeof( CRGB ) );
+    }
+
+    m_data.show();
+  }
+
+  void showColor( CRGB color, uint8_t brightness )
+  {
+    color.nscale8_video( brightness );
+    showColor( color );
+  }
+  
   void show() { m_data.show(); }
 
- void setBrightness(uint8_t brightness )
+  void setBrightness(uint8_t brightness )
         {
           m_data.show(brightness);
         }
@@ -73,18 +101,18 @@ class CommandParser
 {
 public:
 
-  enum Mode
-  {
-    IDLE,
-    COMMAND,
-    COLORS_HEAD,
-    COLORS_READ,
-    SINGLE_COLOR,
-    COLORS_ALL,
-    SET_BRIGHT,
-    SET_RAINBOW,
-    SET_SIZE,
-  };
+  // enum Mode
+  // {
+  //   IDLE,
+  //   COMMAND,
+  //   COLORS_HEAD,
+  //   COLORS_READ,
+  //   SINGLE_COLOR,
+  //   COLORS_ALL,
+  //   SET_BRIGHT,
+  //   SET_RAINBOW,
+  //   SET_SIZE,
+  // };
 
   enum Command
   {
@@ -101,6 +129,14 @@ public:
       COMMAND_RESET        = 0x69,
       COMMAND_SETSIZE      = 0x70,
   };
+
+  enum LogLevel
+  {
+    INFO,
+    ERROR,
+    CHATTY,
+    DEBUG,
+  };
   
   CommandParser()  
   : m_bufsize( 256 )
@@ -108,10 +144,12 @@ public:
   , m_numberOfValuesToRead( 0 )
   , m_currentValueIndex( 0 )
   , m_magic( 0x42 )
-  , m_debug( false )
+  , m_logLevel( DEBUG )
   {   
     m_input_buffer = new char(m_bufsize);
     Serial.begin(9600);
+
+    testPattern(0x0f);
   }
   
   ~CommandParser()
@@ -119,6 +157,31 @@ public:
           delete[] m_input_buffer;
           m_input_buffer = 0;
         }
+
+  void log_msg( LogLevel log_level, const char * format_string, ... )
+  {
+    // if the sent message has a higher log level than currently set, skip reporting this message
+    if( log_level > m_logLevel  ) return;
+
+    char buffer[LOG_STRING_LENGTH];
+    va_list args;
+    va_start (args, format_string);
+    vsnprintf (buffer, LOG_STRING_LENGTH, format_string, args);
+    Serial.println( buffer );
+    va_end (args);
+  }
+
+  Mode mode( Mode new_mode )
+  {
+    m_mode = new_mode;
+    log_msg( DEBUG, "New mode: %d", m_mode);
+    return m_mode;
+  }
+
+  Mode mode() const
+  {
+    return m_mode;
+  }
   
   void parse_input()
   {
@@ -132,29 +195,21 @@ public:
                                (m_bufsize > avail ? avail : m_bufsize ));
     if( rb > 0)
     {
-      m_debug && Serial.print( "Read ");
-      m_debug && Serial.print( rb );
-      m_debug && Serial.println( " bytes");
+      log_msg( DEBUG, "Read %d bytes", rb );
     }
     for( int i=0; i<rb; ++i )
     {
-      m_debug && Serial.print( "Processing byte ");
-      m_debug && Serial.print( i);
-      m_debug && Serial.print( " of ");
-      m_debug && Serial.print( rb);
-      m_debug && Serial.print( " (");
-      m_debug && Serial.print( avail);
-      m_debug && Serial.println( " total)");
+      log_msg( DEBUG, "Processing byte %d of %d (%d total)", i, rb, avail );
 
       // check current byte
       uint8_t c = m_input_buffer[i];
 
-      switch( m_mode )
+      switch( mode() )
       {
       case IDLE:
-        if ( c == m_magic ) { m_mode = COMMAND; }
+        if ( c == m_magic ) { mode( COMMAND ); }
         else {       
-          Serial.println("ERROR: Wrong magic number");
+          log_msg( ERROR, "Wrong magic number");
         }
         break;
       
@@ -162,122 +217,124 @@ public:
 
         switch( c )
         {
+
         case COMMAND_NOP:
-          m_debug && Serial.println("COMMAND_NOP");
-          m_mode = IDLE;
-          m_debug && Serial.println("OK");
+          log_msg( DEBUG, "COMMAND_NOP");
+          mode( IDLE );
           break;
+
         case COMMAND_COLOR:
-          m_debug && Serial.println("COMMAND_COLOR");
-          m_mode = COLORS_HEAD;
+          log_msg( DEBUG, "COMMAND_COLOR");
+          mode( COLORS_HEAD );
           break;
+
         case COMMAND_UNICOLOR:
-          m_debug && Serial.println("COMMAND_UNICOLOR");
+          log_msg( DEBUG, "COMMAND_UNICOLOR");
           m_numberOfValuesToRead = 3;
           m_currentValueIndex = 0;
-          m_mode = COLORS_ALL;
+          mode( COLORS_ALL );
           break;
+
         case COMMAND_TEST:
-          m_debug && Serial.println("COMMAND_TEST");
+          log_msg( DEBUG, "COMMAND_TEST");
           testPattern();
-          m_mode = IDLE;
-          m_debug && Serial.println("OK");
+          mode( IDLE );
           break;
+
         case COMMAND_TESTRAW:
-          m_debug && Serial.println("COMMAND_TESTRAW");
+          log_msg( DEBUG, "COMMAND_TESTRAW");
           testPatternRaw();
-          m_mode = IDLE;
-          m_debug && Serial.println("OK");
+          mode( IDLE );
           break;
+
         case COMMAND_DEBUG:
-          m_debug = !m_debug;
-          m_debug && Serial.println("COMMAND_DEBUG");
-          m_mode = IDLE;
-          m_debug && Serial.println("OK");
+          log_msg( DEBUG, "COMMAND_DEBUG");
+          m_logLevel = (m_logLevel != DEBUG) ? DEBUG : ERROR;
+          mode( IDLE );
           break;
+
         case COMMAND_SINGLE_COLOR:
-          m_debug && Serial.println("COMMAND_SINGLE_COLOR");
-          m_mode = SINGLE_COLOR;
+          log_msg( DEBUG, "COMMAND_SINGLE_COLOR");
+          mode( SINGLE_COLOR );
           break;
+
         case COMMAND_BRIGHT:
-          m_debug && Serial.println("COMMAND_BRIGHT");
-          m_mode = SET_BRIGHT;
+          log_msg( DEBUG, "COMMAND_BRIGHT");
+          mode( SET_BRIGHT );
           break;
+
         case COMMAND_RAINBOW:
-          m_debug && Serial.println("COMMAND_RAINBOW");
+          log_msg( DEBUG, "COMMAND_RAINBOW");
           m_buffer.rainbow();
-          m_mode = IDLE;
-          m_debug && Serial.println("SET_RAINBOW");
+          mode( IDLE );
+
         case COMMAND_RESET:
-          m_debug && Serial.println("COMMAND_RESET");
+          log_msg( DEBUG, "COMMAND_RESET");
           m_buffer.showColor( CRGB::Black );
-          m_mode = IDLE;
+          mode( IDLE );
           break;
+
         case COMMAND_CONF:
-          m_debug && Serial.println("COMMAND_CONF");
-          m_mode = IDLE;
-          char tmp[32];
-          sprintf(&(tmp[0]),"#NUMLEDS=%u",m_buffer.size());
-          Serial.println(tmp);
+          log_msg( DEBUG, "COMMAND_CONF");
+          log_msg( INFO, "#NUMLEDS=%u", m_buffer.size() );
+          mode( IDLE );
           break;
+
         case COMMAND_SETSIZE:
-          m_debug && Serial.println("COMMAND_SETSIZE");
-          m_mode = SET_SIZE;
+          log_msg( DEBUG, "COMMAND_SETSIZE");
+          mode( SET_SIZE );
           break;
+
         default:
-          m_mode = IDLE;
-          Serial.println("ERROR: Unknown command");
+          log_msg( ERROR, "Unknown command");
+          mode( IDLE );
           break;
         }
-        break;
+      break;
 
       case SET_BRIGHT:
       {
         uint8_t  bright_val = m_input_buffer[i];
+        log_msg( DEBUG, "SET_BRIGHT %d", bright_val);
         m_buffer.setBrightness(bright_val);
-        m_mode = IDLE;
-      
-        m_debug && Serial.print("SET_BRIGHT");
-        m_debug && Serial.println( bright_val );
-        //m_debug && Serial.println();
+        mode( IDLE );
         break;
       }
 
       case SET_SIZE:
       {
+        log_msg( DEBUG, "SET_SIZE old %d size %d sizeof %d", (int) m_buffer.leds(), m_buffer.size(), sizeof( m_buffer.leds() ) );
+        
         uint8_t new_size = m_input_buffer[i];
         m_buffer = Buffer( new_size );
-        m_mode = IDLE;
-        m_debug && Serial.print("SET_SIZE");
-        m_debug && Serial.println( new_size );
+        mode( IDLE );
+
+        log_msg( DEBUG, "SET_SIZE new %d size %d sizeof %d", (int) m_buffer.leds(), m_buffer.size(), sizeof( m_buffer.leds() ) );
+
+        log_msg( DEBUG, "SET_SIZE %d result %d", new_size, m_buffer.size() );
         break;
       }
 
       case SINGLE_COLOR:
-
+      {
         memcpy( &color, m_input_buffer + i, 3 );
         i = i + 2;
         m_buffer.showColor( color );
-        m_mode = IDLE;
+        log_msg( DEBUG, "SINGLE_COLOR %d color %d, %d, %d ", i, color[0], color[1], color[2] );
+        mode( IDLE );
 
-        m_debug && Serial.print(" SINGLE_COLOR ");
-        m_debug && Serial.print( i );
-        m_debug && Serial.print( " color ");
-        m_debug && Serial.print( color[0] );
-        m_debug && Serial.print(", ");
-        m_debug && Serial.print( color[1] );
-        m_debug && Serial.print(", ");
-        m_debug && Serial.print( color[2] );
-        m_debug && Serial.println( " " );
 
         break;
+      }
 
       case COLORS_HEAD:
+      {
         m_numberOfValuesToRead = c * 3;
         m_currentValueIndex = 0;
-        m_mode = COLORS_READ;
-        debugcounter = 0;
+        log_msg( DEBUG, "COLORS_HEAD numValuesToRead %d idx %d", m_numberOfValuesToRead, m_currentValueIndex );
+        mode( COLORS_READ );
         break;
+      }
 
       case COLORS_READ:
       {
@@ -286,13 +343,7 @@ public:
         uint8_t  valuesLeft       = m_numberOfValuesToRead - m_currentValueIndex;
         uint8_t  valuesToRead     = (valuesAvailable < valuesLeft) ? valuesAvailable : valuesLeft;
 
-        m_debug && Serial.print( debugcounter++ );
-        m_debug && Serial.print(" Read LED ");
-        m_debug && Serial.print( valuesToRead );
-        m_debug && Serial.print(" index ");
-        m_debug && Serial.print( m_currentValueIndex );
-        m_debug && Serial.print(" i ");
-        m_debug && Serial.print( i );
+        log_msg( DEBUG, "Read LED %d index %d i %d", valuesToRead, m_currentValueIndex, i );
 
         size_t copyNumber = static_cast< size_t >( valuesToRead );
 
@@ -302,21 +353,12 @@ public:
         i                    = i + valuesToRead;
 
 
-        m_debug && Serial.print(" AFTER ");
-        m_debug && Serial.print( valuesToRead );
-        m_debug && Serial.print( " numberofvalues ");
-        m_debug && Serial.print( m_numberOfValuesToRead );
-        m_debug && Serial.print(" index ");
-        m_debug && Serial.print( m_currentValueIndex );
-        m_debug && Serial.print(" i ");
-        m_debug && Serial.println( i );
-
+        log_msg( DEBUG, " AFTER %d index %d i %d", valuesToRead, m_currentValueIndex, i );
 
         if( m_currentValueIndex >= m_numberOfValuesToRead )
         {
           m_buffer.show();
-          m_mode = IDLE;
-          m_debug && Serial.println("OK");
+          mode( IDLE );
         }
         break;
       }
@@ -327,11 +369,7 @@ public:
         uint8_t  valuesLeft       = m_numberOfValuesToRead - m_currentValueIndex;
         uint8_t  valuesToRead     = (valuesAvailable < valuesLeft) ? valuesAvailable : valuesLeft;
 
-        m_debug && Serial.print("Setting ");
-        m_debug && Serial.print( valuesToRead );
-        m_debug && Serial.print( "/" );
-        m_debug && Serial.print( valuesLeft );
-        m_debug && Serial.println(" color values");
+        log_msg( DEBUG, "Setting %d/%d num leds %d", valuesToRead, valuesLeft, m_buffer.size() );
 
         for( int pos=0; pos<valuesToRead; ++pos)
         {
@@ -347,8 +385,7 @@ public:
         if( m_currentValueIndex >= m_numberOfValuesToRead )
         {
           m_buffer.show();
-          m_mode = IDLE;
-          m_debug && Serial.println("OK");
+          mode( IDLE );
         }
         break;
       }
@@ -414,10 +451,9 @@ private:
   uint16_t m_numberOfValuesToRead;
   uint16_t m_currentValueIndex;
 
-  uint16_t debugcounter;
   Buffer m_buffer;
   uint8_t m_magic;
-  bool m_debug;
+  LogLevel m_logLevel;
 };
 
 CommandParser *command_parser;
