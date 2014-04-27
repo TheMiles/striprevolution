@@ -26,76 +26,11 @@
     SET_SIZE,
   };
 
-#include "FastSPI_LED2.h"
+#include "arduino.h"
 
-
-//const uint8_t NUM_LEDS = 238;
-const uint8_t  NUM_LEDS = 255;
-const uint8_t  DATA_PIN = 6;
-const EOrder   RGB_ORDER = GRB;
 const uint16_t LOG_STRING_LENGTH = 1024;
 
-
-
-class Buffer
-{
-public:
-  Buffer(uint8_t numLeds = NUM_LEDS)
-  : m_numLeds( numLeds )
-  , m_leds( NULL )
-  {
-    m_leds = reinterpret_cast< CRGB* >(malloc( m_numLeds * sizeof( CRGB ) ));
-    memset( m_leds, 0, m_numLeds * sizeof( CRGB ) );
-    m_data.addLeds<WS2811, DATA_PIN, RGB_ORDER>(m_leds, m_numLeds);
-    m_data.setBrightness(255);
-    m_data.show();
-  }
-
-  virtual ~Buffer()
-  {
-    free( m_leds );
-    m_leds = NULL;
-  }
-
-  CRGB* leds() { return m_leds; }
-  CFastSPI_LED2* data() { return &(m_data); }
-    
-  uint8_t size() const { return m_numLeds; }
-
-  void showColor( const CRGB &color ) 
-  { 
-    for( uint8_t i = 0; i < m_numLeds; ++i )
-    {
-      memcpy( m_leds + i, &color, sizeof( CRGB ) );
-    }
-
-    m_data.show();
-  }
-
-  void showColor( CRGB color, uint8_t brightness )
-  {
-    color.nscale8_video( brightness );
-    showColor( color );
-  }
-  
-  void show() { m_data.show(); }
-
-  void setBrightness(uint8_t brightness )
-        {
-          m_data.show(brightness);
-        }
-  void rainbow()
-        {
-          fill_rainbow(leds(), size(), 0, uint8_t(255/size()) );
-          m_data.show();
-        }
-
-
-private:
-   uint8_t       m_numLeds;
-  CRGB*         m_leds;
-  CFastSPI_LED2 m_data;
-};
+#include "Buffer.h"
 
 class CommandParser
 {
