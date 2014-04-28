@@ -1,6 +1,6 @@
 [submodule "arduino-cmake"]
 	path = arduino-cmake
 	url = https://github.com/queezythegreat/arduino-cmake.git
-[submodule "FastSPI_LED2"]
-	path = FastSPI_LED2
-	url = https://github.com/blinkiverse/FastSPI_LED2
+[submodule "FastLED"]
+	path = FastLED
+	url = https://github.com/FastLED/FastLED.git
