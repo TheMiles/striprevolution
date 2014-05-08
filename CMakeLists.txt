@@ -24,5 +24,6 @@ set(ARDUINO_DEFAULT_PORT /dev/ttyUSB0) # Default Port, when not specified
 
 
 generate_arduino_firmware(striprevolution
-                          SKETCH .
+                          SRCS striprevolution.cpp Buffer.cpp CommandParser.cpp
+                          HDRS Buffer.h CommandParser.h 
                          )
