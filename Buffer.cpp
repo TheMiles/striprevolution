@@ -22,7 +22,7 @@ CRGB* Buffer::leds()
   return m_leds;
 }
 
-CFastSPI_LED2* Buffer::data()
+CFastLED* Buffer::data()
 { 
   return &(m_data);
 }

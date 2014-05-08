@@ -7,7 +7,7 @@
 
 // Uncomment this line if you want to talk to DMX controllers
 // #define FASTSPI_USE_DMX_SIMPLE 1
-#include "FastSPI_LED2.h"
+#include "FastLED.h"
 
 
 //const uint8_t NUM_LEDS = 238;
@@ -26,7 +26,7 @@ public:
   virtual ~Buffer();
 
   CRGB* leds();
-  CFastSPI_LED2* data();
+  CFastLED* data();
     
   uint8_t size() const;
 
@@ -43,5 +43,5 @@ public:
 private:
   uint8_t       m_numLeds;
   CRGB*         m_leds;
-  CFastSPI_LED2 m_data;
+  CFastLED m_data;
 };
