@@ -9,8 +9,8 @@ except:
     pass
 
 speed = 9600
-
-ports = ["/dev/ttyUSB0","/dev/tty.usbserial-A4006Fho"]
+ports = sorted([ os.path.join('/dev', d) for d in os.walk("/dev").next()[2]
+                 if d.startswith('tty.usbserial') or d.startswith('ttyUSB') ])
 
 num_leds=5
 max_intensity=0xf
