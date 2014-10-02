@@ -1,10 +1,9 @@
-
 #include "Buffer.h"
 
+#define LOG_BUFSIZE   128
+#define INPUT_BUFSIZE 128
 
-const uint16_t LOG_STRING_LENGTH = 1024;
-
-
+#define MAGIC 0x42
 
 class CommandParser
 {
@@ -19,9 +18,11 @@ public:
     SINGLE_COLOR,
     COLORS_ALL,
     SET_BRIGHT,
-    SET_RAINBOW,
     SET_SIZE,
+    MODE_MAX
   };
+
+  static const char* ModeText[MODE_MAX];
 
   enum Command
   {
@@ -46,14 +47,12 @@ public:
     CHATTY,
     DEBUG,
   };
-  
+
   CommandParser();
-  
-  ~CommandParser();
 
-  void log_msg( LogLevel log_level, const char * format_string, ... );
+  void log_msg( LogLevel log_level, const char * format_string, ... ) const;
 
-  Mode mode( Mode new_mode );
+  void setMode( Mode new_mode );
 
   Mode mode() const;
 
@@ -66,13 +65,10 @@ public:
   void testPatternRaw( uint8_t brightness=255);
   
 private:
-  const int m_bufsize;
-  char* m_input_buffer;
   Mode m_mode;
   uint16_t m_numberOfValuesToRead;
   uint16_t m_currentValueIndex;
 
   Buffer m_buffer;
-  uint8_t m_magic;
   LogLevel m_logLevel;
 };

@@ -13,7 +13,7 @@ cmake_minimum_required(VERSION 2.8)
 #  Setup Project                                                     #
 #====================================================================#
 #set(ARDUINO_CXX_FLAGS "${ARDUINO_CXX_FLAGS} -std=c++11")
-set(ARDUINO_CXX_FLAGS "${ARDUINO_CXX_FLAGS}")
+set(ARDUINO_CXX_FLAGS "${ARDUINO_CXX_FLAGS} -Wall")
 project(ArduinoExample C CXX)
 
 #print_board_list()
@@ -25,5 +25,5 @@ set(ARDUINO_DEFAULT_PORT /dev/ttyUSB0) # Default Port, when not specified
 
 generate_arduino_firmware(striprevolution
                           SRCS striprevolution.cpp Buffer.cpp CommandParser.cpp
-                          HDRS Buffer.h CommandParser.h 
+                          HDRS Buffer.h CommandParser.h
                          )

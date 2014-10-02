@@ -2,9 +2,8 @@
 
 Buffer::Buffer( uint8_t numLeds )
 : m_numLeds( numLeds )
-, m_leds( NULL )
 {
-  m_leds = reinterpret_cast< CRGB* >(malloc( m_numLeds * sizeof( CRGB ) ));
+  m_leds = new CRGB(m_numLeds);
   memset( m_leds, 0, m_numLeds * sizeof( CRGB ) );
   m_data.addLeds<WS2811, DATA_PIN, RGB_ORDER>(m_leds, m_numLeds);
   m_data.setBrightness(255);
@@ -13,8 +12,7 @@ Buffer::Buffer( uint8_t numLeds )
 
 Buffer::~Buffer()
 {
-  free( m_leds );
-  m_leds = NULL;
+  delete[] m_leds;
 }
 
 CRGB* Buffer::leds() 
@@ -32,13 +30,11 @@ uint8_t Buffer::size() const
   return m_numLeds;
 }
 
-void Buffer::showColor( const CRGB &color ) 
+void Buffer::showColor( const CRGB& color ) 
 { 
+  CRGB* pos = m_leds;
   for( uint8_t i = 0; i < m_numLeds; ++i )
-  {
-    memcpy( m_leds + i, &color, sizeof( CRGB ) );
-  }
-
+      *(pos++) = color;
   m_data.show();
 }
 

@@ -4,8 +4,6 @@
 // echo -en "\x42\x01\x05\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF\xF" > /dev/ttyUSB0
 // echo -e "\x42\x01\x05\x0F\x00\x00" > /dev/ttyUSB0
 
-#include "arduino.h"
-
 #include "CommandParser.h"
 
 CommandParser *command_parser;
