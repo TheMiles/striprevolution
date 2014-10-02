@@ -16,10 +16,10 @@ CommandParser::CommandParser()
 : m_mode( IDLE )
 , m_numberOfValuesToRead( 0 )
 , m_currentValueIndex( 0 )
-, m_logLevel( DEBUG )
+, m_logLevel( INFO )
 {   
   Serial.begin(9600);
-  testPattern(0x0f);
+  testPattern(0xf);
 }
 
 void CommandParser::log_msg( CommandParser::LogLevel log_level,

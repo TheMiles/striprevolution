@@ -44,7 +44,6 @@ public:
   {
     INFO,
     ERROR,
-    CHATTY,
     DEBUG,
   };
 
