@@ -38,7 +38,7 @@ class LEDDialog(QDialog):
             p.resize(40,40)
             self.btnmapper.setMapping( p, i)
             p.clicked.connect( self.btnmapper.map)
-            self.buttons += [p]
+            self.buttons += [[p,QColor()]]
             btnlayout.addWidget(p)
         self.btnmapper.mapped['int'].connect(self.chooseColor)
         layout.addLayout(btnlayout)
@@ -69,16 +69,14 @@ class LEDDialog(QDialog):
             return
         tmp = bytearray(tmp)
         for i in xrange(self.nleds):
-            pal = self.buttons[i].palette()
-            pal.setColor(
-                QPalette.Button,
-                QColor(int(tmp[i*3+0]),int(tmp[i*3+1]),int(tmp[i*3+2])))
-            self.buttons[i].setPalette(pal)
+            c = QColor(int(tmp[i*3+0]),int(tmp[i*3+1]),int(tmp[i*3+2]))
+            self.buttons[i][0].setStyleSheet("background-color: rgb(%d,%d,%d)"%
+                                             (c.red(),c.green(),c.blue()))
+            self.buttons[i][1] = c
         
     def set(self):
         cmd = [MAGIC,COMMAND_COLOR,self.nleds]
-        for b in self.buttons:
-            c = b.palette().color(QPalette.Button)
+        for b,c in self.buttons:
             cmd += [ c.red(), c.green(), c.blue() ]
         self.conn.write( bytearray( cmd))
         time.sleep(0.1)
@@ -86,12 +84,12 @@ class LEDDialog(QDialog):
         
     def chooseColor(self, i):
         if not i < len(self.buttons): return
-        initial = self.buttons[i].palette().color(QPalette.Button)
+        initial = self.buttons[i][1]
         c = QColorDialog.getColor(initial,self)
         if initial == c: return
-        pal = self.buttons[i].palette()
-        pal.setColor( QPalette.Button, c)
-        self.buttons[i].setPalette(pal)
+        self.buttons[i][0].setStyleSheet("background-color: rgb(%d,%d,%d)"%
+                                         (c.red(),c.green(),c.blue()))
+        self.buttons[i][1] = c
         
 class Widget(QWidget):
     #speed   = 76800
@@ -187,7 +185,9 @@ class Widget(QWidget):
         
         textLayout = QVBoxLayout()
         self.log = QPlainTextEdit()
-        self.log.setFont( QFont("Monospace"))
+        f = QFont("Monospace")
+        f.setStyleHint(QFont.TypeWriter)
+        self.log.setFont(f)
         self.log.setReadOnly(True)
         textLayout.addWidget( self.log)
         self.input = QLineEdit()
@@ -299,8 +299,8 @@ class Widget(QWidget):
             counter += 1
         stop = time.time()
         elapsed = stop-start
-        self.printLog("%.4f seconds per call (%.2f Hz)" %
-                      (elapsed/1.e3,elapsed*1.e3))
+        self.printLog("%.4f seconds per call (%.2f kHz)" %
+                      (elapsed/1.e3,1./elapsed))
         self.timer = self.startTimer(self.timeout)
         
     def sendSerial(self):
