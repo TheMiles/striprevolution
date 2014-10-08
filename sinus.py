@@ -8,33 +8,26 @@ try:
 except:
     pass
 
-speed = 9600
+speed = 115200
 ports = sorted([ os.path.join('/dev', d) for d in os.walk("/dev").next()[2]
                  if d.startswith('tty.usbserial') or d.startswith('ttyUSB') ])
 
 num_leds=5
 max_intensity=0xf
-# iteration_delay=1/50.
+# maximum at 115200 baud
+#iteration_delay=1/500.
+# maximum at 9600 baud
+#iteration_delay=1/50.
+# comfortable setting
 iteration_delay=1/20.
-stepsize=math.pi/32.
-
-def sinus( v, phase ):
-
-    return map( lambda i: int( math.pow( math.sin( phase + i * stepsize * 2), 2 ) * 255.5 ), v )
-
-
-def clamp( v, max_value , min_value ):
-
-    return map( lambda x: max( min_value, min( max_value, x )), v )
-
-
+stepsize=math.pi/64.
 
 class Rainbow:
     def __init__(self,max,nleds):
         self.max   = max
         self.nleds = nleds
         self.hsv   = [0,1,1]
-        self.stepsize=math.pi/64.
+        self.stepsize=stepsize
     
     def iterateLin(self):
         return [ self.hsv[0]+i*self.stepsize for i in xrange(self.nleds) ]
@@ -122,6 +115,7 @@ def main():
         time.sleep(iteration_delay)
     print "Sending COMMAND_RESET"
     conn.write( bytearray( [0x42, 0x69] ))
+    conn.close()
     print "Exiting"
         
 if __name__ == "__main__":
