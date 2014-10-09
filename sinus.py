@@ -12,7 +12,7 @@ speed = 115200
 ports = sorted([ os.path.join('/dev', d) for d in os.walk("/dev").next()[2]
                  if d.startswith('tty.usbserial') or d.startswith('ttyUSB') ])
 
-num_leds=5
+num_leds=210
 max_intensity=0xf
 # maximum at 115200 baud
 #iteration_delay=1/500.
@@ -98,9 +98,11 @@ def main():
     try:
         print "Opening '%s'" % port
         conn = serial.Serial(port, speed, timeout=1)
-        time.sleep(0.1)
+        time.sleep(5)
     except serial.serialutil.SerialException, e: print e
     if not conn: sys.exit(1)
+    # set nleds to 210
+    conn.write(bytearray( [0x42, 0x70, 0xd2]))
     print "Starting effect"
     r = Rainbow( max_intensity, num_leds)
     #r = AudioTest( 0x5F, 5)
