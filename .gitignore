@@ -1,6 +1,5 @@
 build
-/genRainbox.m~
-/minicom.cap
-/sendfile.sh~
+minicom.cap
 /TAGS
 *~
+*.pyc

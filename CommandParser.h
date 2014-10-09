@@ -89,6 +89,6 @@ private:
   mutable char m_log_buffer[LOG_BUFSIZE];
   char m_input_buffer[INPUT_BUFSIZE];
 
-  uint16_t m_numberOfValuesToRead;
-  uint16_t m_currentValueIndex;
+  unsigned int m_numberOfValuesToRead;
+  unsigned int m_currentValueIndex;
 };

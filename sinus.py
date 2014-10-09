@@ -23,7 +23,7 @@ iteration_delay=1/20.
 stepsize=math.pi/64.
 
 class Rainbow:
-    def __init__(self,max,nleds):
+    def __init__(self,nleds,max=0xff):
         self.max   = max
         self.nleds = nleds
         self.hsv   = [0,1,1]

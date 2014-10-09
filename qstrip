@@ -25,13 +25,14 @@ COMMAND_SPEEDTEST    = 0x71
 COMMAND_MEMFREE      = 0x72
 
 class LEDDialog(QDialog):
+    rowwidth = 20
     def __init__(self, nleds, conn, parent=0):
         super(LEDDialog,self).__init__(parent)
         self.conn  = conn
         self.nleds = nleds
         self.buttons = []
         layout = QVBoxLayout()
-        btnlayout = QHBoxLayout()
+        btnlayout = QGridLayout()
         self.btnmapper = QSignalMapper()
         for i in xrange(self.nleds):
             p = QPushButton()
@@ -39,7 +40,7 @@ class LEDDialog(QDialog):
             self.btnmapper.setMapping( p, i)
             p.clicked.connect( self.btnmapper.map)
             self.buttons += [[p,QColor()]]
-            btnlayout.addWidget(p)
+            btnlayout.addWidget(p, i/self.rowwidth, i%self.rowwidth)
         self.btnmapper.mapped['int'].connect(self.chooseColor)
         layout.addLayout(btnlayout)
         ctrllayout = QHBoxLayout()

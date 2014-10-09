@@ -70,8 +70,8 @@ void CommandParser::parse_input()
   if( avail <= 0)
       return;
   memset( m_input_buffer, 0, INPUT_BUFSIZE );
-  int rb = Serial.readBytes( m_input_buffer,
-                             (INPUT_BUFSIZE > avail ? avail : INPUT_BUFSIZE ));
+  int rb = Serial.readBytes(
+      m_input_buffer, (INPUT_BUFSIZE > avail ? avail : INPUT_BUFSIZE ));
   for( int i=0; i<rb; ++i )
   {
     // check current byte
@@ -122,8 +122,8 @@ void CommandParser::parse_input()
       {
         log_msg( DEBUG, "COMMAND_STATE");
         char* leds =  reinterpret_cast<char*>(m_buffer->leds());
-        uint8_t n = m_buffer->size()*3;
-        for( uint8_t i=0; i < n; ++i)
+        unsigned int n = m_buffer->size(); n*=3;
+        for( unsigned int i=0; i < n; ++i)
             Serial.print(*(leds+i));
         Serial.flush();
         setMode( IDLE );
@@ -179,7 +179,7 @@ void CommandParser::parse_input()
 
     case SET_BRIGHT:
     {
-      uint8_t  bright_val = m_input_buffer[i];
+      uint8_t bright_val = m_input_buffer[i];
       log_msg( DEBUG, "SET_BRIGHT %d", bright_val);
       m_buffer->setBrightness(bright_val);
       setMode( IDLE );
@@ -199,7 +199,7 @@ void CommandParser::parse_input()
 
     case COLORS_HEAD:
     {
-      m_numberOfValuesToRead = c * 3;
+      m_numberOfValuesToRead = uint8_t(c); m_numberOfValuesToRead *= 3;
       m_currentValueIndex = 0;
       log_msg( DEBUG, "COLORS_HEAD numValuesToRead %d idx %d",
                m_numberOfValuesToRead, m_currentValueIndex );
@@ -209,18 +209,16 @@ void CommandParser::parse_input()
 
     case COLORS_READ:
     {
-      uint8_t* colorValues      = reinterpret_cast<uint8_t*>(m_buffer->leds());
-      uint8_t  valuesAvailable  = rb - i;
-      uint8_t  valuesLeft       = m_numberOfValuesToRead - m_currentValueIndex;
-      uint8_t  valuesToRead     =
+      uint8_t* data        = reinterpret_cast<uint8_t*>(m_buffer->leds());
+      int valuesAvailable  = rb - i;
+      int valuesLeft       = m_numberOfValuesToRead - m_currentValueIndex;
+      int valuesToRead     =
           (valuesAvailable < valuesLeft) ? valuesAvailable : valuesLeft;
 
       log_msg( DEBUG, "Read LED %d index %d i %d",
                valuesToRead, m_currentValueIndex, i );
 
-      size_t copyNumber = static_cast<size_t>( valuesToRead );
-
-      memcpy(colorValues + m_currentValueIndex, m_input_buffer + i, copyNumber);
+      memcpy(data+m_currentValueIndex, m_input_buffer+i, valuesToRead);
 
       m_currentValueIndex  = m_currentValueIndex + valuesToRead;
       i                    = i + valuesToRead;
@@ -239,10 +237,10 @@ void CommandParser::parse_input()
     
     case COLORS_ALL:
     {
-      uint8_t* data      = reinterpret_cast<uint8_t*>(m_buffer->leds());
-      uint8_t  valuesAvailable  = rb - i;
-      uint8_t  valuesLeft       = m_numberOfValuesToRead - m_currentValueIndex;
-      uint8_t  valuesToRead     =
+      uint8_t* data        = reinterpret_cast<uint8_t*>(m_buffer->leds());
+      int valuesAvailable  = rb - i;
+      int valuesLeft       = m_numberOfValuesToRead - m_currentValueIndex;
+      int valuesToRead     =
           (valuesAvailable < valuesLeft) ? valuesAvailable : valuesLeft;
 
       log_msg( DEBUG, "Setting %d/%d num leds %d",
@@ -315,24 +313,24 @@ void CommandParser::setRGB( uint8_t* data, uint8_t r, uint8_t g, uint8_t b)
 
 void CommandParser::testPatternRaw( uint8_t brightness )
 {
-  uint8_t* buf = reinterpret_cast< uint8_t* >(
-      m_buffer->leds());
-  for( uint8_t i=0; i<m_buffer->size(); ++i)
+  uint8_t* buf = reinterpret_cast< uint8_t* >(m_buffer->leds());
+  unsigned int i;
+  for( i=0; i<m_buffer->size(); ++i)
   { // Red
     setRGB(buf+3*i, brightness, 0, 0);
   }
   m_buffer->show(); delay(500);
-  for( uint8_t i=0; i<m_buffer->size(); ++i)
+  for( i=0; i<m_buffer->size(); ++i)
   { // Green
     setRGB(buf+3*i, 0, brightness, 0);
   }
   m_buffer->show(); delay(500);
-  for( uint8_t i=0; i<m_buffer->size(); ++i)
+  for( i=0; i<m_buffer->size(); ++i)
   { // Blue
     setRGB(buf+3*i, 0, 0, brightness);
   }
   m_buffer->show(); delay(500);
-  for( uint8_t i=0; i<m_buffer->size(); ++i)
+  for( i=0; i<m_buffer->size(); ++i)
   { // Black
     setRGB(buf+3*i, 0, 0, 0);
   }
