@@ -2,32 +2,18 @@
 
 import colorsys, math, serial, signal, sys, time, os
 
-# does not work on OSX
-try:
-    import alsaaudio, audioop
-except:
-    pass
-
 speed = 115200
-ports = sorted([ os.path.join('/dev', d) for d in os.walk("/dev").next()[2]
-                 if d.startswith('tty.usbserial') or d.startswith('ttyUSB') ])
 
-num_leds=210
+num_leds=5
 max_intensity=0xf
-# maximum at 115200 baud
-#iteration_delay=1/500.
-# maximum at 9600 baud
-#iteration_delay=1/50.
-# comfortable setting
-iteration_delay=1/20.
-stepsize=math.pi/64.
+min_delay=1/20.
 
 class Rainbow:
-    def __init__(self,nleds,max=0xff):
+    def __init__(self,nleds,max):
         self.max   = max
         self.nleds = nleds
         self.hsv   = [0,1,1]
-        self.stepsize=stepsize
+        self.stepsize=math.pi/64.
     
     def iterateLin(self):
         return [ self.hsv[0]+i*self.stepsize for i in xrange(self.nleds) ]
@@ -42,79 +28,85 @@ class Rainbow:
         self.hsv[0] += self.stepsize
         while self.hsv[0]+self.nleds*self.stepsize > 1: self.hsv[0] -= 1
         while self.hsv[0] < 0: self.hsv[0] += 1
-        msg = [0x42, 0x01, chr( self.nleds )]
+        msg = [0x42, 0x01, self.nleds]
         for i in val:
             msg += [ int(j*self.max)
                      for j in colorsys.hsv_to_rgb(i, *(self.hsv[1:3]))]
         return bytearray(msg)
 
-class AudioTest:
-    def __init__(self,max,nleds):
-        self.max   = max
-        self.nleds = nleds
-        self.inp = alsaaudio.PCM(alsaaudio.PCM_CAPTURE,alsaaudio.PCM_NONBLOCK)
-        self.inp.setchannels(1)
-        self.inp.setrate(8000)
-        self.inp.setformat(alsaaudio.PCM_FORMAT_S16_LE)   
-        self.inp.setperiodsize(160)
-        self.decay = 0.05
-        self.val = 0
-        self.audioMin = 1
-        self.audioMax = 0
-
-
-    def iterate(self):
-        # Read data from device
-        l,data = self.inp.read()
-        while not l:
-            time.sleep(.001)
-            l,data = self.inp.read()
-            print type(data)
-        val = float(audioop.max(data, 2))
-        if val < self.audioMin: self.audioMin = val
-        if val > self.audioMax: self.audioMax = val
-        mid = (self.audioMin+self.audioMax)/2
-        wid = self.audioMax-self.audioMin
-        if wid < 1e-6:
-            wid = 1
-        val = (val-mid)/wid+0.5
-        if val > self.val: self.val = val
-        msg = [0x42, 0x02]
-        for i in xrange(3):
-            msg += [ int(self.val*self.max) ]
-        self.val -= self.decay
-        return bytearray(msg)
-
-
 doIterate = True
 def signal_handler(signal, frame):
+    global doIterate
+    doIterate = False
     print "Caught SIGINT, stopping"
-    globals()['doIterate'] = False
 
 def main():
+    global num_leds, max_intensity, min_delay
+    if len(sys.argv) > 1:
+        num_leds = int(sys.argv[1])
+    if len(sys.argv) > 2:
+        max_intensity = int(sys.argv[2])
+    if len(sys.argv) > 3:
+        min_delay = float(sys.argv[3])
+    print "num_leds:      %d"   % num_leds
+    print "max_intensity: %s"   % hex(max_intensity)
+    print "min_delay:     %.3f" % min_delay
+    print
+    
     conn = None
+    ports = sorted([ os.path.join('/dev', d)
+                     for d in os.walk("/dev").next()[2]
+                     if d.startswith('tty.usbserial') or
+                     d.startswith('ttyUSB') ])
+    port = ports[0] if len(ports) else None
+    if not port:
+        print "No device found"
+        sys.exit(1)
 
-    port = next( p for p in ports if os.path.exists(p) )
     try:
         print "Opening '%s'" % port
-        conn = serial.Serial(port, speed, timeout=1)
-        time.sleep(5)
+        conn = serial.Serial(port, speed)
+        retries = 10
+        while retries > 0:
+            avail = conn.inWaiting()
+            if avail > 0:
+                conn.read(avail)
+                print "Device is READY"
+                break
+            retries -= 1
+            time.sleep(1)
+        else:
+            conn.close()
+            print "Device is not READY, exiting"
+            sys.exit(1)
     except serial.serialutil.SerialException, e: print e
     if not conn: sys.exit(1)
-    # set nleds to 210
-    conn.write(bytearray( [0x42, 0x70, 0xd2]))
-    print "Starting effect"
-    r = Rainbow( max_intensity, num_leds)
-    #r = AudioTest( 0x5F, 5)
     
-    signal.signal(signal.SIGINT, signal_handler)
-    while doIterate:
-        avail = conn.inWaiting()
-        if avail > 0:
-            print "Reading %d bytes" % avail
-            print conn.read(avail)
-        conn.write(r.iterate())
-        time.sleep(iteration_delay)
+    # set number of leds
+    conn.write(bytearray( [0x42, 0x70, num_leds]))
+    
+    print "Starting effect"
+    r = Rainbow( num_leds, max_intensity)
+    try:
+        prev = time.time()
+        cur = time.time()
+        signal.signal(signal.SIGINT, signal_handler)
+        while doIterate:
+            avail = conn.inWaiting()
+            if avail > 0:
+                s = conn.read(avail)
+                print "Serial hickup, read %d bytes" % avail
+                #print repr(s)
+                time.sleep(1)
+            conn.write(bytearray( [0x42, 0x71] ))
+            conn.read()
+            cur = time.time()
+            diff = cur - prev - min_delay
+            if diff < 0: time.sleep(-diff)
+            prev = cur
+            conn.write(r.iterate())
+    except: pass
+    
     print "Sending COMMAND_RESET"
     conn.write( bytearray( [0x42, 0x69] ))
     conn.close()
