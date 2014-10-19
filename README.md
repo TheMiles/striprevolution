@@ -52,5 +52,5 @@ Command           | code |    data length    |        description
  `DEBUG`          | 0x68 |                 0 | Toggles debug feedback output via serial port.
  `RESET`          | 0x69 |                 0 | Sets all LEDs to black.
  `SETSIZE`        | 0x70 |                 1 | Resizes the current strip length. The new strip length is given by the single data byte (valid range: 0-255).
- `SPEEDTEST`      | 0x71 |                 0 | Returns the number '0' (for serial speed testing).
+ `PING`           | 0x71 |                 0 | Returns the number '0'.
  `MEMFREE`        | 0x72 |                 0 | Returns the memory available in bytes.

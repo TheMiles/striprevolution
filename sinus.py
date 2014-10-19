@@ -8,6 +8,23 @@ num_leds=5
 max_intensity=0xf
 min_delay=1/20.
 
+MAGIC = 0x42
+
+# import command codes from Commands.h
+command = None
+if not os.path.exists('Commands.h'):
+    print "Commands.h not found"
+    sys.exit(0)
+else:
+    f = open('Commands.h')
+    commands = {}
+    for line in f:
+        if line.startswith("#define COMMAND_"):
+            tmp, cmd, byte = line.split()
+            cmd = cmd[cmd.find('_')+1:]
+            commands[cmd] = int(byte,16)
+    command = type('Command', (object,), commands)
+
 class Rainbow:
     def __init__(self,nleds,max):
         self.max   = max
@@ -57,7 +74,8 @@ def main():
     ports = sorted([ os.path.join('/dev', d)
                      for d in os.walk("/dev").next()[2]
                      if d.startswith('tty.usbserial') or
-                     d.startswith('ttyUSB') ])
+                     d.startswith('ttyUSB') or
+                     d.startswith('ttyAMA') ])
     port = ports[0] if len(ports) else None
     if not port:
         print "No device found"
@@ -68,10 +86,10 @@ def main():
         conn = serial.Serial(port, speed)
         retries = 10
         while retries > 0:
+            conn.write( bytearray( [MAGIC,command.PING] ))
+            time.sleep(0.1)
             avail = conn.inWaiting()
-            if avail > 0:
-                conn.read(avail)
-                print "Device is READY"
+            if avail and conn.read(avail) == "0":
                 break
             retries -= 1
             time.sleep(1)
@@ -83,7 +101,7 @@ def main():
     if not conn: sys.exit(1)
     
     # set number of leds
-    conn.write(bytearray( [0x42, 0x70, num_leds]))
+    conn.write(bytearray( [MAGIC, command.SETSIZE, num_leds]))
     
     print "Starting effect"
     r = Rainbow( num_leds, max_intensity)
@@ -98,7 +116,7 @@ def main():
                 print "Serial hickup, read %d bytes" % avail
                 #print repr(s)
                 time.sleep(1)
-            conn.write(bytearray( [0x42, 0x71] ))
+            conn.write(bytearray( [MAGIC, command.PING] ))
             conn.read()
             cur = time.time()
             diff = cur - prev - min_delay
@@ -108,7 +126,7 @@ def main():
     except: pass
     
     print "Sending COMMAND_RESET"
-    conn.write( bytearray( [0x42, 0x69] ))
+    conn.write( bytearray( [MAGIC, command.RESET] ))
     conn.close()
     print "Exiting"
         

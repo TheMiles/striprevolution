@@ -8,21 +8,20 @@ from PyQt4.Qt import *
 
 MAGIC = 0x42
 
-COMMAND_NOP          = 0x0
-COMMAND_COLOR        = 0x1
-COMMAND_UNICOLOR     = 0x2
-COMMAND_SINGLE_COLOR = 0x3
-COMMAND_BRIGHT       = 0x4
-COMMAND_RAINBOW      = 0x5
-COMMAND_STATE        = 0x6
-COMMAND_TEST         = 0x61
-COMMAND_TESTRAW      = 0x62
-COMMAND_CONF         = 0x67
-COMMAND_DEBUG        = 0x68
-COMMAND_RESET        = 0x69
-COMMAND_SETSIZE      = 0x70
-COMMAND_SPEEDTEST    = 0x71
-COMMAND_MEMFREE      = 0x72
+# import command codes from Commands.h
+command = None
+if not os.path.exists('Commands.h'):
+    print "Commands.h not found"
+    sys.exit(0)
+else:
+    f = open('Commands.h')
+    commands = {}
+    for line in f:
+        if line.startswith("#define COMMAND_"):
+            tmp, cmd, byte = line.split()
+            cmd = cmd[cmd.find('_')+1:]
+            commands[cmd] = int(byte,16)
+    command = type('Command', (object,), commands)
 
 class LEDDialog(QDialog):
     rowwidth = 20
@@ -58,7 +57,7 @@ class LEDDialog(QDialog):
         self.refresh()
 
     def refresh(self):
-        self.conn.write( bytearray( [MAGIC,COMMAND_STATE]))
+        self.conn.write( bytearray( [MAGIC,command.STATE]))
         time.sleep(0.1)
         avail = self.conn.inWaiting()
         tmp = ''
@@ -76,7 +75,7 @@ class LEDDialog(QDialog):
             self.buttons[i][1] = c
         
     def set(self):
-        cmd = [MAGIC,COMMAND_COLOR,self.nleds]
+        cmd = [MAGIC,command.COLOR,self.nleds]
         for b,c in self.buttons:
             cmd += [ c.red(), c.green(), c.blue() ]
         self.conn.write( bytearray( cmd))
@@ -114,7 +113,8 @@ class Widget(QWidget):
         ports = sorted([ os.path.join('/dev', d)
                          for d in os.walk("/dev").next()[2]
                          if d.startswith('tty.usbserial') or
-                         d.startswith('ttyUSB') ])
+                         d.startswith('ttyUSB') or
+                         d.startswith('ttyAMA') ])
         self.port = ports[0] if len(ports) else None
         if not self.port:
             self.printLog("No device found")
@@ -129,22 +129,17 @@ class Widget(QWidget):
             sys.exit(1)
         self.printLog("Opened  '%s' with speed %i" %
                       (self.port,self.conn.baudrate))
-        if not self.pingDevice():
-            retries = 10
-            while retries > 0:
-                avail = self.conn.inWaiting()
-                ans = ""
-                while avail > 0:
-                    ans += self.conn.read(avail)
-                    avail = self.conn.inWaiting()
-                if ans.strip() == "READY":
-                    break
-                retries -= 1
-                QApplication.processEvents()
-                time.sleep(1)
-            else:
-                print "Error connecting to device"
-                sys.exit(1)
+        
+        retries = 10
+        while retries > 0:
+            if self.pingDevice():
+                break
+            retries -= 1
+            QApplication.processEvents()
+            time.sleep(1)
+        else:
+            print "Error connecting to device"
+            sys.exit(1)
         self.printLog("Device is READY")
         self.setInputState(True)
         self.timer = self.startTimer(self.timeout)
@@ -155,14 +150,14 @@ class Widget(QWidget):
             self.setInputState(False)
             self.killTimer(self.timer)
             self.printLog("Sending COMMAND_RESET")
-            self.conn.write( bytearray( [MAGIC, COMMAND_RESET] ))
+            self.conn.write( bytearray( [MAGIC, command.RESET] ))
             self.printLog("Closing '%s'" % self.port)
             self.conn.close()
             del self.conn
             self.conn = None
     
     def pingDevice(self):
-        self.conn.write( bytearray( [MAGIC,COMMAND_SPEEDTEST] ))
+        self.conn.write( bytearray( [MAGIC,command.PING] ))
         time.sleep(0.1)
         avail = self.conn.inWaiting()
         if avail and self.conn.read(avail) == "0":
@@ -204,17 +199,17 @@ class Widget(QWidget):
         buttonLayout.addWidget(p)
         p = QPushButton("Rainbow")
         p.clicked.connect(
-            lambda: self.conn.write( bytearray( [MAGIC,COMMAND_RAINBOW] )))
+            lambda: self.conn.write( bytearray( [MAGIC,command.RAINBOW] )))
         buttonLayout.addWidget(p)
         self.inputs += [p]
         p = QPushButton("Test")
         p.clicked.connect(
-            lambda: self.conn.write( bytearray( [MAGIC,COMMAND_TEST] )))
+            lambda: self.conn.write( bytearray( [MAGIC,command.TEST] )))
         buttonLayout.addWidget(p)
         self.inputs += [p]
         p = QPushButton("TestRaw")
         p.clicked.connect(
-            lambda: self.conn.write( bytearray( [MAGIC,COMMAND_TESTRAW] )))
+            lambda: self.conn.write( bytearray( [MAGIC,command.TESTRAW] )))
         buttonLayout.addWidget(p)
         self.inputs += [p]
         p = QPushButton("LED State")
@@ -231,7 +226,7 @@ class Widget(QWidget):
         self.inputs += [p]
         p = QPushButton("Reset")
         p.clicked.connect(
-            lambda: self.conn.write( bytearray( [MAGIC,COMMAND_RESET] )))
+            lambda: self.conn.write( bytearray( [MAGIC,command.RESET] )))
         buttonLayout.addWidget(p)
         self.inputs += [p]
         p = QPushButton("Set Size")
@@ -261,7 +256,7 @@ class Widget(QWidget):
         
     def updateConfig(self, printConfig):
         self.killTimer( self.timer)
-        self.conn.write( bytearray( [MAGIC,COMMAND_CONF] ))
+        self.conn.write( bytearray( [MAGIC,command.CONF] ))
         time.sleep(0.1)
         config = ""
         avail = self.conn.inWaiting()
@@ -279,7 +274,7 @@ class Widget(QWidget):
         self.timer = self.startTimer( self.timeout)
         
     def toggleDebug( self):
-        self.conn.write( bytearray( [MAGIC,COMMAND_DEBUG] ))
+        self.conn.write( bytearray( [MAGIC,command.DEBUG] ))
         time.sleep(0.1)
         self.tryReadSerial(False)
         self.updateConfig(False)
@@ -288,14 +283,14 @@ class Widget(QWidget):
         self.killTimer(self.timer)
         start = time.time()
         counter = 0
-        self.conn.write( bytearray( [MAGIC,COMMAND_SPEEDTEST] ))
+        self.conn.write( bytearray( [MAGIC,command.PING] ))
         c = self.conn.read()
         if c != "0":
                 self.printLog("Error testing serial speed")
                 self.timer = self.startTimer(self.timeout)
                 return
         while counter < 1000:
-            self.conn.write( bytearray( [MAGIC,COMMAND_SPEEDTEST] ))
+            self.conn.write( bytearray( [MAGIC,command.PING] ))
             self.conn.read()
             counter += 1
         stop = time.time()
@@ -346,12 +341,12 @@ class Widget(QWidget):
         newsize = int(QInputDialog.getInt(
             self, "Set Size", "Enter Size (0-255):", oldsize, 0, 255)[0])
         if oldsize == newsize: return
-        self.conn.write( bytearray([MAGIC,COMMAND_SETSIZE, newsize]))
+        self.conn.write( bytearray([MAGIC,command.SETSIZE, newsize]))
         self.config['nleds'] = str(newsize)
 
     def freeMemory(self):
         self.killTimer( self.timer)
-        self.conn.write( bytearray([MAGIC,COMMAND_MEMFREE]))
+        self.conn.write( bytearray([MAGIC,command.MEMFREE]))
         time.sleep(0.1)
         s = ""
         avail = self.conn.inWaiting()

@@ -34,7 +34,6 @@ void CommandParser::init(uint8_t nleds)
 {
   m_buffer = new LEDBuffer(nleds);
   Serial.begin(BAUDRATE);
-  Serial.println("READY");
 }
 
 CommandParser::~CommandParser()
@@ -84,7 +83,7 @@ void CommandParser::parse_input()
         setMode( COMMAND );
       }
       else {       
-        log_msg( ERROR, "Wrong magic number");
+        log_msg( ERROR, "Wrong magic number %d", c);
       }
       break;
     
@@ -158,7 +157,7 @@ void CommandParser::parse_input()
       case COMMAND_SETSIZE:
         setMode( SET_SIZE );
         break;
-      case COMMAND_SPEEDTEST:
+      case COMMAND_PING:
         Serial.print("0");
         Serial.flush();
         setMode( IDLE );

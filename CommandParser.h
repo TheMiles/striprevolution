@@ -12,31 +12,13 @@
 #define DATA_PIN  6
 #define RGB_ORDER GRB                        \
 
+#include "Commands.h"
+
 class CommandParser
 {
   typedef Buffer<DATA_PIN,RGB_ORDER> LEDBuffer;
   
 public:
-
-  enum Command
-  {
-      COMMAND_NOP          = 0x0,
-      COMMAND_COLOR        = 0x1,
-      COMMAND_UNICOLOR     = 0x2,
-      COMMAND_SINGLE_COLOR = 0x3,
-      COMMAND_BRIGHT       = 0x4,
-      COMMAND_RAINBOW      = 0x5,
-      COMMAND_STATE        = 0x6,
-      COMMAND_TEST         = 0x61,
-      COMMAND_TESTRAW      = 0x62,
-      COMMAND_CONF         = 0x67,
-      COMMAND_DEBUG        = 0x68,
-      COMMAND_RESET        = 0x69,
-      COMMAND_SETSIZE      = 0x70,
-      COMMAND_SPEEDTEST    = 0x71,
-      COMMAND_MEMFREE      = 0x72,
-  };
-
   enum Mode
   {
     IDLE,
