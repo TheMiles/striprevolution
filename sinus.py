@@ -4,9 +4,12 @@ import colorsys, math, serial, signal, sys, time, os
 
 speed = 115200
 
-num_leds=5
-max_intensity=0xf
-min_delay=1/20.
+args = [
+    ('num_leds',      5),
+    ('max_intensity', 0xf),
+    ('min_delay',     1/20.),
+    ('stepsize',      math.pi/256.),
+]
 
 MAGIC = 0x42
 
@@ -26,11 +29,11 @@ else:
     command = type('Command', (object,), commands)
 
 class Rainbow:
-    def __init__(self,nleds,max):
-        self.max   = max
-        self.nleds = nleds
-        self.hsv   = [0,1,1]
-        self.stepsize=math.pi/64.
+    def __init__(self,nleds,max,stepsize=math.pi/256.):
+        self.max      = max
+        self.nleds    = nleds
+        self.hsv      = [0,1,1]
+        self.stepsize = stepsize
     
     def iterateLin(self):
         return [ self.hsv[0]+i*self.stepsize for i in xrange(self.nleds) ]
@@ -45,7 +48,7 @@ class Rainbow:
         self.hsv[0] += self.stepsize
         while self.hsv[0]+self.nleds*self.stepsize > 1: self.hsv[0] -= 1
         while self.hsv[0] < 0: self.hsv[0] += 1
-        msg = [0x42, 0x01, self.nleds]
+        msg = [MAGIC, 0x01, self.nleds]
         for i in val:
             msg += [ int(j*self.max)
                      for j in colorsys.hsv_to_rgb(i, *(self.hsv[1:3]))]
@@ -58,17 +61,26 @@ def signal_handler(signal, frame):
     print "Caught SIGINT, stopping"
 
 def main():
-    global num_leds, max_intensity, min_delay
-    if len(sys.argv) > 1:
-        num_leds = int(sys.argv[1])
-    if len(sys.argv) > 2:
-        max_intensity = int(sys.argv[2])
-    if len(sys.argv) > 3:
-        min_delay = float(sys.argv[3])
-    print "num_leds:      %d"   % num_leds
-    print "max_intensity: %s"   % hex(max_intensity)
-    print "min_delay:     %.3f" % min_delay
+    global args
+    for i, arg in enumerate(args):
+        if len(sys.argv) <= i+1:
+            break
+        val = sys.argv[i+1]
+        if isinstance(val,str) and val.startswith('0x'):
+            val = int(val, 16)
+        args[i] = (arg[0], val)
+
+    size = max( [ len(arg[0]) for arg in args ])
+    for arg in args:
+        name, val = arg
+        name = name.ljust(size)
+        if isinstance(val,float):
+            print "%s: %.3f" % (name,val)
+        else:
+            print "%s: %s"   % (name,val)
     print
+    
+    vars = dict(args)
     
     conn = None
     ports = sorted([ os.path.join('/dev', d)
@@ -101,30 +113,31 @@ def main():
     if not conn: sys.exit(1)
     
     # set number of leds
-    conn.write(bytearray( [MAGIC, command.SETSIZE, num_leds]))
+    conn.write(bytearray( [MAGIC, command.SETSIZE, int(vars['num_leds']) ]))
     
     print "Starting effect"
-    r = Rainbow( num_leds, max_intensity)
-    try:
-        prev = time.time()
+    r = Rainbow( int(  vars['num_leds']     ),
+                 int(  vars['max_intensity']),
+                 float(vars['stepsize']     ))
+    min_delay = float(vars['min_delay'])
+    prev = time.time()
+    cur = time.time()
+    signal.signal(signal.SIGINT, signal_handler)
+    while doIterate:
+        avail = conn.inWaiting()
+        if avail > 0:
+            s = conn.read(avail)
+            print "Serial hickup, read %d bytes" % avail
+            #print repr(s)
+            time.sleep(1)
+        conn.write(bytearray( [MAGIC, command.PING] ))
+        conn.read()
         cur = time.time()
-        signal.signal(signal.SIGINT, signal_handler)
-        while doIterate:
-            avail = conn.inWaiting()
-            if avail > 0:
-                s = conn.read(avail)
-                print "Serial hickup, read %d bytes" % avail
-                #print repr(s)
-                time.sleep(1)
-            conn.write(bytearray( [MAGIC, command.PING] ))
-            conn.read()
-            cur = time.time()
-            diff = cur - prev - min_delay
-            if diff < 0: time.sleep(-diff)
-            prev = cur
-            conn.write(r.iterate())
-    except: pass
-    
+        diff = cur - prev - min_delay
+        if diff < 0: time.sleep(-diff)
+        prev = cur
+        conn.write(r.iterate())
+
     print "Sending COMMAND_RESET"
     conn.write( bytearray( [MAGIC, command.RESET] ))
     conn.close()

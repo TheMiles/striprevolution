@@ -7,11 +7,14 @@ sleep_unicolor=0.004
 
 device_linux=/dev/ttyUSB0
 device_mac=/dev/tty.usbserial-A4006Fho
+device_rpi=/dev/ttyAMA0
 
 if [ -e $device_linux ]; then
     device=$device_linux
 elif [ -e $device_mac ]; then
     device=$device_mac
+elif [ -e $device_rpi ]; then
+    device=$device_rpi
 else
     echo "Could not find usable device, exiting."
     exit 1
