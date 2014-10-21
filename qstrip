@@ -2,6 +2,12 @@
 
 import os, serial, sip, sys, time
 
+# python 2.5 compatibility (i.e. N900)
+if not 'bytearray' in dir(__builtins__):
+    import array
+    def bytearray( bytelist):
+        return array.array('b',bytelist)
+
 # avoid QTextStream::hex shadowing built-in function
 sip.setapi('QTextStream',2)
 from PyQt4.Qt import *
@@ -115,6 +121,8 @@ class Widget(QWidget):
                          if d.startswith('tty.usbserial') or
                          d.startswith('ttyUSB') or
                          d.startswith('ttyAMA') ])
+        if os.path.exists('vmodem0'):
+            ports = ['vmodem0'] + ports
         self.port = ports[0] if len(ports) else None
         if not self.port:
             self.printLog("No device found")

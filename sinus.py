@@ -1,6 +1,12 @@
 #!/usr/bin/env python
 
-import colorsys, math, serial, signal, sys, time, os
+import colorsys, math, serial, signal, sys, time, os, select, errno
+
+# python 2.5 compatibility (i.e. N900)
+if not 'bytearray' in dir(__builtins__):
+    import array
+    def bytearray( bytelist):
+        return array.array('b',bytelist)
 
 speed = 115200
 
@@ -88,6 +94,8 @@ def main():
                      if d.startswith('tty.usbserial') or
                      d.startswith('ttyUSB') or
                      d.startswith('ttyAMA') ])
+    if os.path.exists('vmodem0'):
+        ports = ['vmodem0'] + ports
     port = ports[0] if len(ports) else None
     if not port:
         print "No device found"
@@ -124,20 +132,25 @@ def main():
     cur = time.time()
     signal.signal(signal.SIGINT, signal_handler)
     while doIterate:
-        avail = conn.inWaiting()
-        if avail > 0:
-            s = conn.read(avail)
-            print "Serial hickup, read %d bytes" % avail
-            #print repr(s)
-            time.sleep(1)
-        conn.write(bytearray( [MAGIC, command.PING] ))
-        conn.read()
-        cur = time.time()
-        diff = cur - prev - min_delay
-        if diff < 0: time.sleep(-diff)
-        prev = cur
-        conn.write(r.iterate())
-
+        try:
+            avail = conn.inWaiting()
+            if avail > 0:
+                s = conn.read(avail)
+                print "Serial hickup, read %d bytes" % avail
+                #print repr(s)
+                time.sleep(1)
+            conn.write(bytearray( [MAGIC, command.PING] ))
+            conn.read()
+            cur = time.time()
+            diff = cur - prev - min_delay
+            if diff < 0: time.sleep(-diff)
+            prev = cur
+            conn.write(r.iterate())
+        except select.error, v:
+            if v[0] != errno.EINTR:
+                raise
+            else:
+                break
     print "Sending COMMAND_RESET"
     conn.write( bytearray( [MAGIC, command.RESET] ))
     conn.close()
