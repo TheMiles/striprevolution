@@ -40,7 +40,7 @@ class ColorChooserDialog(QColorDialog):
         self.currentColorChanged.connect( self.colorChanged )
 
     def getLEDs(self):
-        self.conn.write( bytearray( [MAGIC,COMMAND_STATE]))
+        self.conn.write( bytearray( [MAGIC,command.STATE]))
         time.sleep(0.1)
         avail = self.conn.inWaiting()
         tmp = ''
@@ -53,14 +53,14 @@ class ColorChooserDialog(QColorDialog):
         return tmp    
 
     def cancel(self):
-        cmd = [MAGIC,COMMAND_COLOR,self.nleds]
+        cmd = [MAGIC,command.COLOR,self.nleds]
         cmd.extend( self.backupLEDs )
         self.conn.write( bytearray( cmd ) )
         time.sleep(0.1)
 
     def colorChanged(self, color):
         if color.isValid():
-            cmd = [ MAGIC, COMMAND_UNICOLOR, color.red(), color.green(), color.blue() ]
+            cmd = [ MAGIC, command.UNICOLOR, color.red(), color.green(), color.blue() ]
             self.conn.write( bytearray( cmd ) )
             time.sleep(0.1)
 
