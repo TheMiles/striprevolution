@@ -29,6 +29,41 @@ else:
             commands[cmd] = int(byte,16)
     command = type('Command', (object,), commands)
 
+class ColorChooserDialog(QColorDialog):
+
+    def __init__(self, nleds, conn, parent=0):
+        super(ColorChooserDialog,self).__init__(parent)
+        self.conn       = conn
+        self.nleds      = nleds
+        self.backupLEDs = self.getLEDs()
+        self.rejected.connect( self.cancel )
+        self.currentColorChanged.connect( self.colorChanged )
+
+    def getLEDs(self):
+        self.conn.write( bytearray( [MAGIC,COMMAND_STATE]))
+        time.sleep(0.1)
+        avail = self.conn.inWaiting()
+        tmp = ''
+        while avail > 0:
+            tmp += self.conn.read(avail)
+            avail = self.conn.inWaiting()
+        if len(tmp) != self.nleds*3:
+            print "LED strip length mismatch"
+            return [0] * self.nleds * 3
+        return tmp    
+
+    def cancel(self):
+        cmd = [MAGIC,COMMAND_COLOR,self.nleds]
+        cmd.extend( self.backupLEDs )
+        self.conn.write( bytearray( cmd ) )
+        time.sleep(0.1)
+
+    def colorChanged(self, color):
+        if color.isValid():
+            cmd = [ MAGIC, COMMAND_UNICOLOR, color.red(), color.green(), color.blue() ]
+            self.conn.write( bytearray( cmd ) )
+            time.sleep(0.1)
+
 class LEDDialog(QDialog):
     rowwidth = 20
     def __init__(self, nleds, conn, parent=0):
@@ -220,6 +255,10 @@ class Widget(QWidget):
             lambda: self.conn.write( bytearray( [MAGIC,command.TESTRAW] )))
         buttonLayout.addWidget(p)
         self.inputs += [p]
+        p = QPushButton("UniColor")
+        p.clicked.connect( self.openUnicolor )
+        buttonLayout.addWidget(p)
+        self.inputs += [p]
         p = QPushButton("LED State")
         p.clicked.connect( self.getLEDState)
         buttonLayout.addWidget(p)
@@ -332,6 +371,17 @@ class Widget(QWidget):
     def timerEvent(self,e):
         e.accept()
         self.tryReadSerial()
+
+    def openUnicolor(self):
+        self.killTimer(self.timer)
+        debug = False
+        if self.config['loglvl'] == 'DEBUG':
+            self.toggleDebug()
+            debug = True
+        d = ColorChooserDialog(int(self.config['nleds']), self.conn, self)
+        d.exec_()
+        if debug: self.toggleDebug()
+        self.timer = self.startTimer(self.timeout)
 
     def getLEDState(self):
         self.killTimer(self.timer)
