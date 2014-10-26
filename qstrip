@@ -43,7 +43,9 @@ class LEDDialog(QDialog):
         self.btnmapper = QSignalMapper()
         for i in xrange(int(self.strip.config['nleds'])):
             p = QPushButton()
-            p.resize(40,40)
+            p.setFixedWidth(40)
+            p.setFlat(True)
+            p.setAutoFillBackground(True)
             self.btnmapper.setMapping( p, i)
             p.clicked.connect( self.btnmapper.map)
             self.buttons += [[p,QColor()]]
@@ -68,8 +70,11 @@ class LEDDialog(QDialog):
         tmp = self.strip.state()
         for i in xrange(len(self.buttons)):
             c = QColor(int(tmp[i*3+0]),int(tmp[i*3+1]),int(tmp[i*3+2]))
-            self.buttons[i][0].setStyleSheet("background-color: rgb(%d,%d,%d)"%
-                                             (c.red(),c.green(),c.blue()))
+            pal = self.buttons[i][0].palette()
+            pal.setBrush( QPalette.Button, QColor(c.red(),c.green(),c.blue()))
+            self.buttons[i][0].setPalette(pal)
+            #self.buttons[i][0].setStyleSheet("background-color: rgb(%d,%d,%d)"%
+            #                                 (c.red(),c.green(),c.blue()))
             self.buttons[i][1] = c
         
     def set(self):
@@ -85,8 +90,11 @@ class LEDDialog(QDialog):
         initial = self.buttons[i][1]
         c = QColorDialog.getColor(initial,self)
         if initial == c: return
-        self.buttons[i][0].setStyleSheet("background-color: rgb(%d,%d,%d)"%
-                                         (c.red(),c.green(),c.blue()))
+        pal = self.buttons[i][0].palette()
+        pal.setBrush( QPalette.Button, QColor(c.red(),c.green(),c.blue()))
+        self.buttons[i][0].setPalette(pal)
+        #self.buttons[i][0].setStyleSheet("background-color: rgb(%d,%d,%d)"%
+        #                                 (c.red(),c.green(),c.blue()))
         self.buttons[i][1] = c
         
 class Widget(QWidget):
