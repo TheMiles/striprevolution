@@ -1,36 +1,43 @@
 #include "CommandParser.h"
 
+// that's the way a reset should be done but the device will just keep on 
+// resetting (maybe disabling the watchdog in .init3 does not work for some
+// reason) - jumping to 0x0 instead (which is not as clean as registers are not
+// getting reinitialised).
+#if 0
+#include <avr/wdt.h>
+
+void wdt_init (void) __attribute__ ((naked, used, section (".init3")));
+void wdt_init (void)
+{
+  MCUSR = 0;
+  wdt_disable();
+  return;
+}
+
+void reset_func()
+{
+  wdt_enable(WDTO_15MS);
+  while(1);
+}
+#else
+void (*reset_func)() = 0;
+#endif
+
 // needed for free memory calculation
 extern int* __brkval;
 
-const char* CommandParser::ModeText[MODE_MAX] =
-{
-    "IDLE",
-    "COMMAND",
-    "COLORS_HEAD",
-    "COLORS_READ",
-    "SINGLE_COLOR",
-    "COLORS_ALL",
-    "SET_BRIGHT",
-    "SET_SIZE",
-};
-              
-const char* CommandParser::LogLvlText[LOGLVL_MAX] =
-{
-    "ERROR",
-    "INFO",
-    "DEBUG"
-};
-
 CommandParser::CommandParser()
-: m_buffer(0)
-, m_mode( IDLE )
-, m_logLevel( INFO )
+: m_mode( IDLE )
+, m_debug( false )
 , m_numberOfValuesToRead( 0 )
 , m_currentValueIndex( 0 )
+, m_avail( 0 )
+, m_readBytes( 0 )
+, m_index( 0 )
 {}
 
-void CommandParser::init(uint8_t nleds)
+void CommandParser::init(nleds_t nleds)
 {
   m_buffer = new LEDBuffer(nleds);
   Serial.begin(BAUDRATE);
@@ -41,247 +48,207 @@ CommandParser::~CommandParser()
   if( m_buffer) delete m_buffer;
 }
 
-void CommandParser::log_msg( CommandParser::LogLvl log_level,
-                             const char * format_string, ... ) const
+#ifndef SAVEMEM
+void CommandParser::log_msg_real( bool debug,
+                                  const char * format_string, ... ) const
 {
-  if( log_level > m_logLevel  ) return;
+  if( !(m_debug && debug) ) return;
   va_list args;
   va_start (args, format_string);
   vsnprintf (m_log_buffer, LOG_BUFSIZE, format_string, args);
   Serial.println( m_log_buffer );
   va_end (args);
 }
+#endif
 
-void CommandParser::setMode( Mode new_mode )
+bool CommandParser::read_serial()
 {
-  m_mode = new_mode;
-}
-
-CommandParser::Mode CommandParser::mode() const
-{
-  return m_mode;
+  if( m_index < m_readBytes)
+      return true;
+  m_avail = Serial.available();
+  if( m_avail <= 0)
+      return false;
+  memset( m_input_buffer, 0, INPUT_BUFSIZE );
+  m_index = 0;
+  m_readBytes = Serial.readBytes(
+      m_input_buffer, (INPUT_BUFSIZE > m_avail ? m_avail : INPUT_BUFSIZE ));
+  return true;
 }
 
 void CommandParser::parse_input()
 {
-  CRGB color;
-  int avail = Serial.available();
-  if( avail <= 0)
+  if( !read_serial())
       return;
-  memset( m_input_buffer, 0, INPUT_BUFSIZE );
-  int rb = Serial.readBytes(
-      m_input_buffer, (INPUT_BUFSIZE > avail ? avail : INPUT_BUFSIZE ));
-  for( int i=0; i<rb; ++i )
+  
+  switch( m_mode )
   {
-    // check current byte
-    uint8_t c = m_input_buffer[i];
-
-    switch( mode() )
-    {
-    case IDLE:
-      if ( c == MAGIC ) {
-        setMode( COMMAND );
-      }
-      else {       
-        log_msg( ERROR, "Wrong magic number %d", c);
-      }
-      break;
+  case IDLE:
+    if ( m_input_buffer[m_index++] == MAGIC ) {
+      m_mode = COMMAND;
+    }
+    else {       
+      Serial.println( F("Wrong magic number"));
+    }
+    break;
     
-    case COMMAND:
-      switch( c )
-      {
-      case COMMAND_NOP:
-        log_msg( DEBUG, "COMMAND_NOP");
-        setMode( IDLE );
-        break;
-      case COMMAND_COLOR:
-        log_msg( DEBUG, "COMMAND_COLOR");
-        setMode( COLORS_HEAD );
-        break;
-      case COMMAND_UNICOLOR:
-        log_msg( DEBUG, "COMMAND_UNICOLOR");
-        m_numberOfValuesToRead = 3;
-        m_currentValueIndex = 0;
-        setMode( COLORS_ALL );
-        break;
-      case COMMAND_SINGLE_COLOR:
-        log_msg( DEBUG, "COMMAND_SINGLE_COLOR");
-        setMode( SINGLE_COLOR );
-        break;
-      case COMMAND_BRIGHT:
-        log_msg( DEBUG, "COMMAND_BRIGHT");
-        setMode( SET_BRIGHT );
-        break;
-      case COMMAND_RAINBOW:
-        log_msg( DEBUG, "COMMAND_RAINBOW");
-        m_buffer->rainbow();
-        setMode( IDLE );
-        break;
-      case COMMAND_STATE:
-      {
-        log_msg( DEBUG, "COMMAND_STATE");
-        char* leds =  reinterpret_cast<char*>(m_buffer->leds());
-        unsigned int n = m_buffer->size(); n*=3;
-        for( unsigned int i=0; i < n; ++i)
-            Serial.print(*(leds+i));
-        Serial.flush();
-        setMode( IDLE );
-        break;
-      }
-      case COMMAND_TEST:
-        log_msg( DEBUG, "COMMAND_TEST");
-        testPattern();
-        setMode( IDLE );
-        break;
-      case COMMAND_TESTRAW:
-        log_msg( DEBUG, "COMMAND_TESTRAW");
-        testPatternRaw();
-        setMode( IDLE );
-        break;
-      case COMMAND_CONF:
-        log_msg( INFO, "nleds:  %u", m_buffer->size() );
-        log_msg( INFO, "speed:  %s", STR(BAUDRATE) );
-        log_msg( INFO, "loglvl: %s", LogLvlText[m_logLevel] );
-        setMode( IDLE );
-        break;
-      case COMMAND_DEBUG:
-        log_msg( DEBUG, "COMMAND_DEBUG");
-        m_logLevel = (m_logLevel != DEBUG) ? DEBUG : INFO;
-        setMode( IDLE );
-        break;
-      case COMMAND_RESET:
-        log_msg( DEBUG, "COMMAND_RESET");
-        m_buffer->showColor( CRGB::Black );
-        setMode( IDLE );
-        break;
-      case COMMAND_SETSIZE:
-        setMode( SET_SIZE );
-        break;
-      case COMMAND_PING:
-        Serial.print("0");
-        Serial.flush();
-        setMode( IDLE );
-        break;
-      case COMMAND_MEMFREE:
-      {
-        log_msg( INFO, "Free RAM: %d bytes", __brkval ? int(SP)-int(__brkval) :
-                 int(SP)-int(__malloc_heap_start));
-        setMode( IDLE );
-        break;
-      }
-      default:
-        log_msg( ERROR, "Unknown command");
-        setMode( IDLE );
-        break;
-      }
-      break;
-
-    case SET_BRIGHT:
+  case COMMAND:
+    switch( m_input_buffer[m_index++] )
     {
-      uint8_t bright_val = m_input_buffer[i];
-      log_msg( DEBUG, "SET_BRIGHT %d", bright_val);
-      m_buffer->setBrightness(bright_val);
-      setMode( IDLE );
+    case COMMAND_NOP:
+      log_msg( true, "COMMAND_NOP");
+      m_mode = IDLE;
       break;
-    }
-
-    case SINGLE_COLOR:
-    {
-      memcpy( &color, m_input_buffer + i, 3 );
-      i += 2;
-      m_buffer->showColor( color );
-      log_msg( DEBUG, "SINGLE_COLOR %d color %d, %d, %d ",
-               i, color[0], color[1], color[2] );
-      setMode( IDLE );
+    case COMMAND_COLOR:
+      log_msg( true, "COMMAND_COLOR");
+      m_mode = COLORS_HEAD;
       break;
-    }
-
-    case COLORS_HEAD:
-    {
-      m_numberOfValuesToRead = uint8_t(c); m_numberOfValuesToRead *= 3;
+    case COMMAND_UNICOLOR:
+      log_msg( true, "COMMAND_UNICOLOR");
+      m_numberOfValuesToRead = 3;
       m_currentValueIndex = 0;
-      log_msg( DEBUG, "COLORS_HEAD numValuesToRead %d idx %d",
-               m_numberOfValuesToRead, m_currentValueIndex );
-      setMode( COLORS_READ );
+      m_mode = COLORS_ALL;
       break;
-    }
-
-    case COLORS_READ:
+    case COMMAND_BLANK:
+      log_msg( true, "COMMAND_BLANK");
+      m_buffer->showColor( CRGB::Black );
+      m_mode = IDLE;
+      break;
+    case COMMAND_BRIGHT:
+      log_msg( true, "COMMAND_BRIGHT");
+      m_mode = SET_BRIGHT;
+      break;
+    case COMMAND_RAINBOW:
+      log_msg( true, "COMMAND_RAINBOW");
+      m_buffer->rainbow();
+      m_mode = IDLE;
+      break;
+    case COMMAND_STATE:
     {
-      uint8_t* data        = reinterpret_cast<uint8_t*>(m_buffer->leds());
-      int valuesAvailable  = rb - i;
-      int valuesLeft       = m_numberOfValuesToRead - m_currentValueIndex;
-      int valuesToRead     =
-          (valuesAvailable < valuesLeft) ? valuesAvailable : valuesLeft;
-
-      log_msg( DEBUG, "Read LED %d index %d i %d",
-               valuesToRead, m_currentValueIndex, i );
-
-      memcpy(data+m_currentValueIndex, m_input_buffer+i, valuesToRead);
-
-      m_currentValueIndex  = m_currentValueIndex + valuesToRead;
-      i                    = i + valuesToRead;
-
-
-      log_msg( DEBUG, " AFTER %d index %d i %d",
-               valuesToRead, m_currentValueIndex, i );
-
-      if( m_currentValueIndex >= m_numberOfValuesToRead )
-      {
-        m_buffer->show();
-        setMode( IDLE );
-      }
+      log_msg( true, "COMMAND_STATE");
+      uint8_t* leds =  m_buffer->leds_raw();
+      unsigned int n = m_buffer->size(); n*=3;
+      for( unsigned int i=0; i < n; ++i)
+          Serial.print((char) *(leds+i));
+      Serial.flush();
+      m_mode = IDLE;
       break;
     }
-    
-    case COLORS_ALL:
-    {
-      uint8_t* data        = reinterpret_cast<uint8_t*>(m_buffer->leds());
-      int valuesAvailable  = rb - i;
-      int valuesLeft       = m_numberOfValuesToRead - m_currentValueIndex;
-      int valuesToRead     =
-          (valuesAvailable < valuesLeft) ? valuesAvailable : valuesLeft;
-
-      log_msg( DEBUG, "Setting %d/%d num leds %d",
-               valuesToRead, valuesLeft, m_buffer->size() );
-
-      while( valuesToRead-- > 0)
-      {
-        for( int led_idx=0; led_idx < m_buffer->size(); ++led_idx)
-        {
-          *(data+m_currentValueIndex+led_idx*3) = *(m_input_buffer+i);
-        }
-        ++m_currentValueIndex;
-        ++i;
-      }
-
-      if( m_currentValueIndex >= m_numberOfValuesToRead )
-      {
-        m_buffer->show();
-        setMode( IDLE );
-      }
+    case COMMAND_TEST:
+      log_msg( true, "COMMAND_TEST");
+      testPattern();
+      m_mode = IDLE;
       break;
-    }
-
-    case SET_SIZE:
-    {
-      uint8_t newsize = m_input_buffer[i];
-      log_msg( DEBUG, "SET_SIZE %d", newsize);
-      if( newsize != m_buffer->size())
-      {
-        m_buffer->showColor( CRGB::Black );
-        delete m_buffer;
-        m_buffer = new LEDBuffer(newsize);
-      }
-      setMode( IDLE );
+    case COMMAND_CONF:
+      Serial.print(F("nleds: "));
+      Serial.println(m_buffer->size());
+      Serial.print(F("nleds_max: "));
+      Serial.println(nleds_t(-1));
+      Serial.println(F("speed:  "STR(BAUDRATE)));
+      Serial.print( F("debug: "));
+      Serial.println(m_debug);
+      m_mode = IDLE;
       break;
-    }
-    
+    case COMMAND_DEBUG:
+      log_msg( true, "COMMAND_DEBUG");
+#ifndef SAVEMEM
+      m_debug = !m_debug;
+#endif
+      m_mode = IDLE;
+      break;
+    case COMMAND_RESET:
+      log_msg( true, "COMMAND_RESET");
+      reset_func();
+      m_mode = IDLE;
+      break;
+    case COMMAND_SETSIZE:
+      log_msg( true, "COMMAND_SETSIZE");
+      m_currentValueIndex = 0;
+      m_mode = SET_SIZE;
+      break;
+    case COMMAND_PING:
+      Serial.print("0");
+      Serial.flush();
+      m_mode = IDLE;
+      break;
+    case COMMAND_MEMFREE:
+      log_msg( true, "COMMAND_MEMFREE");
+      Serial.print(F("Free RAM: "));
+      Serial.println(__brkval ? int(SP)-int(__brkval) :
+                    int(SP)-int(__malloc_heap_start));
+      m_mode = IDLE;
+      break;
     default:
-      log_msg( ERROR, "Unknown mode %d", m_mode);
-      setMode( IDLE );
+      Serial.println( F("Unknown command"));
+      m_mode = IDLE;
       break;
     }
+    break;
+
+  case SET_BRIGHT:
+  {
+    uint8_t bright_val = get_value<uint8_t>();
+    log_msg( true, "SET_BRIGHT %d", bright_val);
+    m_buffer->setBrightness(bright_val);
+    m_mode = IDLE;
+    break;
+  }
+  
+  case COLORS_HEAD:
+  {
+    log_msg( true, "COLORS_HEAD");
+    m_numberOfValuesToRead = get_value<nleds_t>();
+    m_numberOfValuesToRead *= 3;
+    log_msg( true, "COLORS_HEAD numValuesToRead %d",
+             m_numberOfValuesToRead);
+    m_mode = COLORS_READ;
+    break;
+  }
+  
+  case COLORS_READ:
+  {
+    log_msg( true, "COLORS_READ");
+    get_values( m_buffer->leds_raw(), m_numberOfValuesToRead);
+    m_buffer->show();
+    m_mode = IDLE;
+    break;
+  }
+  
+  case COLORS_ALL:
+  {
+    log_msg( true, "COLORS_ALL");
+    uint8_t  color[3];
+    uint8_t* data  = m_buffer->leds_raw();
+    get_values( color, 3);
+    for( unsigned int led_idx=0; led_idx < m_buffer->size(); ++led_idx)
+    {
+        *(data++) = *(color);
+        *(data++) = *(color+1);
+        *(data++) = *(color+2);
+    }
+    m_buffer->show();
+    m_mode = IDLE;
+    break;
+  }
+  
+  case SET_SIZE:
+  {
+    nleds_t newsize = get_value<nleds_t>();
+    if( newsize != m_buffer->size())
+    {
+      log_msg( true, "SET_SIZE %u", newsize);
+      m_buffer->showColor( CRGB::Black );
+      delete m_buffer;
+      m_buffer = new LEDBuffer(newsize);
+    }
+    m_mode = IDLE;
+    break;
+  }
+  
+  default:
+    Serial.print(F("Unknown mode "));
+    Serial.println(m_mode);
+    m_mode = IDLE;
+    break;
   }
 }
 
@@ -301,37 +268,4 @@ void CommandParser::testPattern( uint8_t brightness )
   delay(500);
   m_buffer->showColor( CRGB::Black );
   delay(500);
-}
-
-void CommandParser::setRGB( uint8_t* data, uint8_t r, uint8_t g, uint8_t b)
-{
-  *data     = r;
-  *(data+1) = g;
-  *(data+2) = b;
-}
-
-void CommandParser::testPatternRaw( uint8_t brightness )
-{
-  uint8_t* buf = reinterpret_cast< uint8_t* >(m_buffer->leds());
-  unsigned int i;
-  for( i=0; i<m_buffer->size(); ++i)
-  { // Red
-    setRGB(buf+3*i, brightness, 0, 0);
-  }
-  m_buffer->show(); delay(500);
-  for( i=0; i<m_buffer->size(); ++i)
-  { // Green
-    setRGB(buf+3*i, 0, brightness, 0);
-  }
-  m_buffer->show(); delay(500);
-  for( i=0; i<m_buffer->size(); ++i)
-  { // Blue
-    setRGB(buf+3*i, 0, 0, brightness);
-  }
-  m_buffer->show(); delay(500);
-  for( i=0; i<m_buffer->size(); ++i)
-  { // Black
-    setRGB(buf+3*i, 0, 0, 0);
-  }
-  m_buffer->show(); delay(500);
 }

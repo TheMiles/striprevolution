@@ -1,3 +1,14 @@
+General notes
+=============
+
+- Compiling without optimization (`-Os`) will break the LED timing
+- Compiling with `-DSAVEMEM` (enabled by default) will remove all debug logging from the code but free another ~400 bytes of SRAM.
+
+                  | program | data | Free SRAM | max LEDs
+------------------|---------|------|-----------|----------
+ w/  `-DSAVEMEM`  |    7790 |  454 |      1484 |      451
+ w/o `-DSAVEMEM`  |   10062 |  850 |      1087 |      318
+
 Serial communication
 ====================
 
@@ -49,3 +60,12 @@ On the client side, run:
     socat pty,link=$HOME/dev/vmodem0 tcp:$SERVER_IP:$SERVER_PORT
     
 The device `$HOME/dev/vmodem0` can now be used by client programs.
+
+Raspberry Pi serial usage
+-------------------------
+
+In order to use the onboard serial device of the RasPi `/dev/ttyAMA0`, it has to be released from being used for kernel logging first:
+
+- remove `console=ttyAMA0,115200 kgdboc=ttyAMA0,115200` from `/boot/cmdline.txt`
+- comment out `T0:23:respawn:/sbin/getty -L ttyAMA0 115200 vt100` in `/etc/inittab`
+- reboot

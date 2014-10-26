@@ -2,7 +2,7 @@
 striprevolution
 ===============
 
-Running a strip of WS2811 based LEDs.
+Running a strip of WS2811/WS2812(B)  based LEDs.
 
 Can be controlled via serial port. 
 
@@ -27,7 +27,7 @@ Toggle debug output
 
 All LEDs off
 		
-		echo -en "\x42\x69" > /dev/ttyUSB0
+		echo -en "\x42\x3" > /dev/ttyUSB0
 
 
 Commands
@@ -39,18 +39,17 @@ The second byte shows the command
 
 Command           | code |    data length    |        description
 ------------------|------|-------------------|-------------------------------
- `NOOP`           | 0x00 |                 0 | no op
+ `NOP`            | 0x00 |                 0 | no op
  `COLOR`          | 0x01 |   see description | Set a number of leds. The *first byte* contains the **number** of remaining RGB values, followed by `number * 3` bytes in RGB order.
  `UNICOLOR`       | 0x02 |                 3 | Sets given color on all elements of the strip. The following three bytes contain the color in RGB order.
- `SINGLE_COLOR`   | 0x03 |                 3 | Sets given color on all elements of the strip. The following three bytes contain the color in RGB order.
+ `BLANK`          | 0x03 |                 0 | Sets all LEDs to black.
  `BRIGHT`         | 0x04 |                 1 | Sets brightness to given value.
  `RAINBOW`        | 0x05 |                 0 | Sets all LEDs to a rainbow pattern.
  `STATE`          | 0x06 |                 0 | Prints nled*3 bytes containing the currently set color values of all leds.
  `TEST`           | 0x61 |                 0 | Runs a test pattern.
- `TESTRAW`        | 0x62 |                 0 | Runs another test pattern.
  `CONF`           | 0x67 |                 0 | Prints baudrate, number of leds and log level.
  `DEBUG`          | 0x68 |                 0 | Toggles debug feedback output via serial port.
- `RESET`          | 0x69 |                 0 | Sets all LEDs to black.
+ `RESET`          | 0x69 |                 0 | Soft reset.
  `SETSIZE`        | 0x70 |                 1 | Resizes the current strip length. The new strip length is given by the single data byte (valid range: 0-255).
  `PING`           | 0x71 |                 0 | Returns the number '0'.
  `MEMFREE`        | 0x72 |                 0 | Returns the memory available in bytes.

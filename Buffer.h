@@ -2,11 +2,11 @@
 
 #include "FastLED.h"
 
-template<uint8_t DATA_PIN=6, EOrder RGB_ORDER=GRB>
+template<class nleds_t=uint8_t, uint8_t DATA_PIN=6, EOrder RGB_ORDER=GRB>
 class Buffer
 {
 public:
-  Buffer( uint8_t nleds)
+  Buffer( nleds_t nleds)
           : m_nleds( nleds)
           , m_leds( new CRGB[m_nleds])
         {
@@ -26,7 +26,12 @@ public:
           return m_leds;
         }
   
-  uint8_t size() const
+  uint8_t* leds_raw()
+        {
+          return reinterpret_cast<uint8_t*>(m_leds);
+        }
+  
+  nleds_t size() const
         {
           return m_nleds;
         }
@@ -34,7 +39,7 @@ public:
   void showColor( const CRGB& color ) 
         { 
           CRGB* pos = m_leds;
-          for( uint8_t i = 0; i < m_nleds; ++i )
+          for( nleds_t i = 0; i < m_nleds; ++i )
               *(pos++) = color;
           m_data.show();
         }
@@ -62,7 +67,7 @@ public:
         }
 
 private:
-  uint8_t  m_nleds;
+  nleds_t  m_nleds;
   CFastLED m_data;
   CRGB*    m_leds;
 };

@@ -1,5 +1,7 @@
 #include "CommandParser.h"
 
+#include <avr/wdt.h>
+
 // Default to 5 LEDs, can be adjusted later to a current maximum of 215 LEDs
 // The maximum number is limited by the available heap memory for the
 // corresponding LED color array of size nleds*3 bytes
@@ -10,6 +12,7 @@
 CommandParser command_parser;
 
 void setup() {
+  wdt_disable();
   command_parser.init(NUM_LEDS);
 }
 
