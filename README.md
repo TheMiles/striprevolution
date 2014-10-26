@@ -40,7 +40,7 @@ The second byte shows the command
 Command           | code |    data length    |        description
 ------------------|------|-------------------|-------------------------------
  `NOP`            | 0x00 |                 0 | no op
- `COLOR`          | 0x01 |   see description | Set a number of leds. The *first byte* contains the **number** of remaining RGB values, followed by `number * 3` bytes in RGB order.
+ `COLOR`          | 0x01 |   see description | Set a number of leds. The *first 1-2 bytes* contain the **number** of remaining RGB values, either as a single byte or as a two byte word (in the order hi/lo), depending on the used datatype in the code (default: 2 bytes). It is followed by `number * 3` bytes in RGB order.
  `UNICOLOR`       | 0x02 |                 3 | Sets given color on all elements of the strip. The following three bytes contain the color in RGB order.
  `BLANK`          | 0x03 |                 0 | Sets all LEDs to black.
  `BRIGHT`         | 0x04 |                 1 | Sets brightness to given value.

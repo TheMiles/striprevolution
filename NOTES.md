@@ -21,6 +21,8 @@ Two solutions exist for this issue:
 
 - disable the automatic reset via hardware
 
+When using the terminal to communicate with the serial device, make sure that the tty is set up properly (i.e. use stty).
+
 Disabling automatic reset on serial connect
 -----------------------------------------
 
@@ -67,5 +69,7 @@ Raspberry Pi serial usage
 In order to use the onboard serial device of the RasPi `/dev/ttyAMA0`, it has to be released from being used for kernel logging first:
 
 - remove `console=ttyAMA0,115200 kgdboc=ttyAMA0,115200` from `/boot/cmdline.txt`
+
 - comment out `T0:23:respawn:/sbin/getty -L ttyAMA0 115200 vt100` in `/etc/inittab`
+
 - reboot
