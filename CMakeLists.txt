@@ -14,8 +14,16 @@ cmake_minimum_required(VERSION 2.8)
 #====================================================================#
 project(ArduinoExample C CXX)
 
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -DSAVEMEM")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+
+# disable for proper debug logging
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSAVEMEM")
+
+# enable for serial debugging
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSERIALDEBUG")
+
+# override default baudrate of 115200
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBAUDRATE=9600")
 
 #print_board_list()
 #print_programmer_list()

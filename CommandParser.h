@@ -5,7 +5,10 @@
 
 #define LOG_BUFSIZE   128
 #define INPUT_BUFSIZE 128
+
+#ifndef BAUDRATE
 #define BAUDRATE      115200
+#endif
 
 #define MAGIC 0x42
 

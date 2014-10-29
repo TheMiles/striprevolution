@@ -83,11 +83,24 @@ void CommandParser::parse_input()
   switch( m_mode )
   {
   case IDLE:
-    if ( m_input_buffer[m_index++] == MAGIC ) {
+    if ( m_input_buffer[m_index] == MAGIC ) {
       m_mode = COMMAND;
+      ++m_index;
     }
-    else {       
+    else if(m_input_buffer[m_index] == char(0xff)) {
+      // workaround for XBees
+      ++m_index;
+    }
+    else {
       Serial.println( F("Wrong magic number"));
+#ifdef SERIAL_DEBUG
+      Serial.print("BEGIN ");
+      while(m_index < m_readBytes)
+      {
+        Serial.print(char(m_input_buffer[m_index++]));
+      }
+      Serial.println(" END");
+#endif
     }
     break;
     
