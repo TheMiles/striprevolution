@@ -4,15 +4,25 @@ import os, serial, sip, sys, time
 
 from striplib import Strip, Command, MAGIC
 
+# avoid QTextStream::hex shadowing built-in function
+sip.setapi('QTextStream',2)
+from PyQt4.Qt import *
+
+global_debug = True
+
+# parameters for direct connection
+speed = 115200
+timeout = 1
+
+# parameters for XBee
+#speed = 9600
+#timeout = 2
+
 # python 2.5 compatibility (i.e. N900)
 if not 'bytearray' in dir(__builtins__):
     import array
     def bytearray( bytelist):
         return array.array('b',bytelist)
-
-# avoid QTextStream::hex shadowing built-in function
-sip.setapi('QTextStream',2)
-from PyQt4.Qt import *
 
 class ColorChooserDialog(QColorDialog):
 
@@ -98,15 +108,12 @@ class LEDDialog(QDialog):
         self.buttons[i][1] = c
         
 class Widget(QWidget):
-    #speed   = 76800
-    speed   = 115200
-    timeout = 100
-    debug   = True
-    
+    timer_timeout = 100
+
     def __init__(self):
         super(Widget,self).__init__()
         self.strip = Strip()
-        self.strip.debug = self.debug
+        self.strip.debug = global_debug
         self.initGUI()
         self.setInputState(False)
         self.setMinimumSize( 600, 400)
@@ -125,7 +132,7 @@ class Widget(QWidget):
             self.printLog("No device found")
             return
         self.printLog("Opening '%s'" % port)
-        if not self.strip.connect(port, self.speed):
+        if not self.strip.connect(port, speed=speed, timeout=timeout):
             sys.exit(1)
         self.printLog("Opened  '%s' with speed %i" %
                       (port, self.strip.baudrate()))
@@ -142,7 +149,7 @@ class Widget(QWidget):
             sys.exit(1)
         self.printLog("Device is READY")
         self.setInputState(True)
-        self.timer = self.startTimer(self.timeout)
+        self.timer = self.startTimer(self.timer_timeout)
         self.updateConfig(True)
         
     def closeSerial(self):
@@ -250,11 +257,11 @@ class Widget(QWidget):
     def updateConfig(self, printConfig):
         self.killTimer( self.timer)
         if not self.strip.updateConfig():
-            self.printLog( "Error retrieving config: " + config)
+            self.printLog( "Error retrieving config: " + str(self.strip.config))
         else:
             if printConfig:
                 self.printLog( "Config: " + str(self.strip.config))
-        self.timer = self.startTimer( self.timeout)
+        self.timer = self.startTimer( self.timer_timeout)
         
     def speedTest(self):
         self.killTimer(self.timer)
@@ -263,7 +270,7 @@ class Widget(QWidget):
             self.printLog("Error testing serial speed")
         else:
             self.printLog(msg)
-        self.timer = self.startTimer(self.timeout)
+        self.timer = self.startTimer(self.timer_timeout)
         
     def sendSerial(self):
         if not len(self.input.text()): return
@@ -298,7 +305,7 @@ class Widget(QWidget):
         d = ColorChooserDialog(self.strip,self)
         d.exec_()
         if debug: self.strip.toggleDebug()
-        self.timer = self.startTimer(self.timeout)
+        self.timer = self.startTimer(self.timer_timeout)
 
     def getLEDState(self):
         self.killTimer(self.timer)
@@ -309,7 +316,7 @@ class Widget(QWidget):
         d = LEDDialog(self.strip,self)
         d.exec_()
         if debug: self.strip.toggleDebug()
-        self.timer = self.startTimer(self.timeout)
+        self.timer = self.startTimer(self.timer_timeout)
 
     def setSize(self):
         oldsize = int(self.strip.config['nleds'])
@@ -322,7 +329,7 @@ class Widget(QWidget):
     def freeMemory(self):
         self.killTimer( self.timer)
         self.printLog(self.strip.freeMemory())
-        self.timer = self.startTimer( self.timeout)
+        self.timer = self.startTimer( self.timer_timeout)
         
 def main():
     a = QApplication(sys.argv)

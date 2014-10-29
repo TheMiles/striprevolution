@@ -4,7 +4,13 @@ import colorsys, math, signal, sys, time, os, select, errno
 
 from striplib import Strip
 
+# parameters for direct connection
 speed = 115200
+timeout = 1
+
+# parameters for XBee
+#speed = 9600
+#timeout = 2
 
 # python 2.5 compatibility (i.e. N900)
 if not 'bytearray' in dir(__builtins__):
@@ -80,7 +86,7 @@ def main():
         sys.exit(1)
 
     print "Opening '%s'" % port
-    if not strip.connect(port, speed):
+    if not strip.connect(port, speed=speed, timeout=timeout):
         sys.exit(1)
     retries = 10
     while retries > 0:

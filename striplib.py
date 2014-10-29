@@ -1,5 +1,7 @@
 import os, serial, sys, time
 
+# connect parameters for XBee: baudrate=9600, timeout=2
+
 # import command codes from Commands.h
 Command = None
 if not os.path.exists('Commands.h'):
@@ -90,6 +92,7 @@ class Strip(object):
         avail = self.conn.inWaiting()
         while avail > 0:
             config += self.conn.read(avail)
+            time.sleep(0.1)
             avail = self.conn.inWaiting()
         try:
             d = dict([ i.strip().split(':')

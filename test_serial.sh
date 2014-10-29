@@ -9,6 +9,8 @@ device_linux=/dev/ttyUSB0
 device_mac=/dev/tty.usbserial-A4006Fho
 device_rpi=/dev/ttyAMA0
 
+baudrate=115200
+
 if [ -e $device_linux ]; then
     device=$device_linux
 elif [ -e $device_mac ]; then
@@ -20,7 +22,15 @@ else
     exit 1
 fi
 
-echo "Using device '$device'"
+if [ $# -ge 1 ]; then
+    device=$1
+fi
+
+if [ $# -ge 2 ]; then
+    baudrate=$2
+fi
+
+echo "Using device '$device' at baudrate $baudrate"
 
 # works well up to SLEEP=0.004
 command_unicolor() {
@@ -44,7 +54,7 @@ echo "Resetting serial port"
 # options found on Arduino forum
 STTYOPTS="cs8 ignbrk -brkint -icrnl -imaxbel -opost -onlcr -isig -icanon -iexten -echo -echoe -echok -echoctl -echoke noflsh -ixon -crtscts"
 stty -F $device sane
-stty -F $device 115200 $STTYOPTS
+stty -F $device $baudrate $STTYOPTS
 
 echo "Starting tail"
 tail -f $device &
