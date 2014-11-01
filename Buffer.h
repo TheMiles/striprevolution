@@ -8,9 +8,8 @@ class Buffer
 public:
   Buffer( nleds_t nleds)
           : m_nleds( nleds)
-          , m_leds( new CRGB[m_nleds])
         {
-          memset( m_leds, 0, m_nleds * sizeof( CRGB ) );
+          m_leds = (CRGB*) calloc( m_nleds ,sizeof( CRGB ) );
           m_data.addLeds<WS2811, DATA_PIN, RGB_ORDER>(m_leds, m_nleds);
           m_data.setBrightness(255);
           m_data.show();
@@ -18,7 +17,7 @@ public:
 
   ~Buffer()
         {
-          delete[] m_leds;
+          free(m_leds);
         }
   
   CRGB* leds()
