@@ -100,6 +100,8 @@ void CommandParser::parse_input()
         Serial.print(char(m_input_buffer[m_index++]));
       }
       Serial.println(" END");
+#else
+      ++m_index;
 #endif
     }
     break;
