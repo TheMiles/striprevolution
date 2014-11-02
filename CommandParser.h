@@ -1,4 +1,11 @@
-#include "Buffer.h"
+#ifndef COMMANDPARSER_H
+#define COMMANDPARSER_H
+
+#include <stdint.h>
+#include <string.h>
+
+#include <util/delay.h>
+#include <WString.h>
 
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
@@ -12,16 +19,11 @@
 
 #define MAGIC 0x42
 
-#define DATA_PIN  6
-#define RGB_ORDER GRB                        \
-
 #include "Commands.h"
 
+template<typename nleds_t,typename buffer_t,typename serial_t>
 class CommandParser
 {
-  typedef uint16_t nleds_t;
-  typedef Buffer<nleds_t,DATA_PIN,RGB_ORDER> LEDBuffer;
-  
   enum Mode
   {
     IDLE,
@@ -35,7 +37,7 @@ class CommandParser
   };
 
 public:
-  CommandParser();
+  CommandParser(serial_t& serial);
   ~CommandParser();
   
   void init(nleds_t nleds);
@@ -72,11 +74,306 @@ private:
   int m_readBytes;
   int m_index;
   
-  LEDBuffer* m_buffer;
+  serial_t& m_serial;
+  buffer_t* m_buffer;
 };
 
+// that's the way a reset should be done but the device will just keep on 
+// resetting (maybe disabling the watchdog in .init3 does not work for some
+// reason) - jumping to 0x0 instead (which is not as clean as registers are not
+// getting reinitialised).
+#if 0
+#include <avr/wdt.h>
+
+void wdt_init (void) __attribute__ ((naked, used, section (".init3")));
+void wdt_init (void)
+{
+  MCUSR = 0;
+  wdt_disable();
+  return;
+}
+
+void reset_func()
+{
+  wdt_enable(WDTO_15MS);
+  while(1);
+}
+#else
+void (*reset_func)() = 0;
+#endif
+
+// needed for free memory calculation
+extern int* __brkval;
+
+template<typename nleds_t,typename buffer_t,typename serial_t>
+CommandParser<nleds_t,buffer_t,serial_t>::CommandParser(serial_t& serial)
+: m_mode( IDLE )
+, m_debug( false )
+, m_numberOfValuesToRead( 0 )
+, m_currentValueIndex( 0 )
+, m_avail( 0 )
+, m_readBytes( 0 )
+, m_index( 0 )
+, m_serial(serial)
+{}
+
+template<typename nleds_t,typename buffer_t,typename serial_t>
+void CommandParser<nleds_t,buffer_t,serial_t>::init(nleds_t nleds)
+{
+  m_buffer = new buffer_t(nleds);
+  m_serial.begin(BAUDRATE);
+}
+
+template<typename nleds_t,typename buffer_t,typename serial_t>
+CommandParser<nleds_t,buffer_t,serial_t>::~CommandParser()
+{
+  if( m_buffer) delete m_buffer;
+}
+
+#ifndef SAVEMEM
+template<typename nleds_t,typename buffer_t,typename serial_t>
+void CommandParser<nleds_t,buffer_t,serial_t>::log_msg_real(
+    bool debug, const char * format_string, ... ) const
+{
+  if( !(m_debug && debug) ) return;
+  va_list args;
+  va_start (args, format_string);
+  vsnprintf (m_log_buffer, LOG_BUFSIZE, format_string, args);
+  m_serial.println( m_log_buffer );
+  va_end (args);
+}
+#endif
+
+template<typename nleds_t,typename buffer_t,typename serial_t>
+bool CommandParser<nleds_t,buffer_t,serial_t>::read_serial()
+{
+  if( m_index < m_readBytes)
+      return true;
+  m_avail = m_serial.available();
+  if( m_avail <= 0)
+      return false;
+  memset( m_input_buffer, 0, INPUT_BUFSIZE );
+  m_index = 0;
+  m_readBytes = m_serial.readBytes(
+      m_input_buffer, (INPUT_BUFSIZE > m_avail ? m_avail : INPUT_BUFSIZE ));
+  return true;
+}
+
+template<typename nleds_t,typename buffer_t,typename serial_t>
+void CommandParser<nleds_t,buffer_t,serial_t>::parse_input()
+{
+  if( !read_serial())
+      return;
+  
+  switch( m_mode )
+  {
+  case IDLE:
+    if ( m_input_buffer[m_index] == MAGIC ) {
+      m_mode = COMMAND;
+      ++m_index;
+    }
+    else if(m_input_buffer[m_index] == char(0xff)) {
+      // workaround for XBees
+      ++m_index;
+    }
+    else {
+      m_serial.println( F("Wrong magic number"));
+#ifdef SERIAL_DEBUG
+      m_serial.print("BEGIN ");
+      while(m_index < m_readBytes)
+      {
+        m_serial.print(char(m_input_buffer[m_index++]));
+      }
+      m_serial.println(" END");
+#else
+      ++m_index;
+#endif
+    }
+    break;
+    
+  case COMMAND:
+    switch( m_input_buffer[m_index++] )
+    {
+    case COMMAND_NOP:
+      log_msg( true, "COMMAND_NOP");
+      m_mode = IDLE;
+      break;
+    case COMMAND_COLOR:
+      log_msg( true, "COMMAND_COLOR");
+      m_mode = COLORS_HEAD;
+      break;
+    case COMMAND_UNICOLOR:
+      log_msg( true, "COMMAND_UNICOLOR");
+      m_numberOfValuesToRead = 3;
+      m_currentValueIndex = 0;
+      m_mode = COLORS_ALL;
+      break;
+    case COMMAND_BLANK:
+      log_msg( true, "COMMAND_BLANK");
+      m_buffer->clear();
+      m_mode = IDLE;
+      break;
+    case COMMAND_BRIGHT:
+      log_msg( true, "COMMAND_BRIGHT");
+      m_mode = SET_BRIGHT;
+      break;
+    case COMMAND_RAINBOW:
+      log_msg( true, "COMMAND_RAINBOW");
+      m_buffer->rainbow();
+      m_mode = IDLE;
+      break;
+    case COMMAND_STATE:
+    {
+      log_msg( true, "COMMAND_STATE");
+      uint8_t* leds =  m_buffer->leds_raw();
+      unsigned int n = m_buffer->size(); n*=3;
+      for( unsigned int i=0; i < n; ++i)
+          m_serial.print((char) *(leds+i));
+      m_serial.flush();
+      m_mode = IDLE;
+      break;
+    }
+    case COMMAND_TEST:
+      log_msg( true, "COMMAND_TEST");
+      testPattern();
+      m_mode = IDLE;
+      break;
+    case COMMAND_CONF:
+      m_serial.print(F("nleds: "));
+      m_serial.println(m_buffer->size());
+      m_serial.print(F("nleds_max: "));
+      m_serial.println(nleds_t(-1));
+      m_serial.println(F("speed:  "STR(BAUDRATE)));
+      m_serial.print( F("debug: "));
+      m_serial.println(m_debug);
+      m_mode = IDLE;
+      break;
+    case COMMAND_DEBUG:
+      log_msg( true, "COMMAND_DEBUG");
+#ifndef SAVEMEM
+      m_debug = !m_debug;
+#endif
+      m_mode = IDLE;
+      break;
+    case COMMAND_RESET:
+      log_msg( true, "COMMAND_RESET");
+      reset_func();
+      m_mode = IDLE;
+      break;
+    case COMMAND_SETSIZE:
+      log_msg( true, "COMMAND_SETSIZE");
+      m_currentValueIndex = 0;
+      m_mode = SET_SIZE;
+      break;
+    case COMMAND_PING:
+      m_serial.print("0");
+      m_serial.flush();
+      m_mode = IDLE;
+      break;
+    case COMMAND_MEMFREE:
+      log_msg( true, "COMMAND_MEMFREE");
+      m_serial.print(F("Free RAM: "));
+      m_serial.println(__brkval ? int(SP)-int(__brkval) :
+                    int(SP)-int(__malloc_heap_start));
+      m_mode = IDLE;
+      break;
+    default:
+      m_serial.println( F("Unknown command"));
+      m_mode = IDLE;
+      break;
+    }
+    break;
+
+  case SET_BRIGHT:
+  {
+    uint8_t bright_val = get_value<uint8_t>();
+    log_msg( true, "SET_BRIGHT %d", bright_val);
+    m_buffer->setBrightness(bright_val);
+    m_mode = IDLE;
+    break;
+  }
+  
+  case COLORS_HEAD:
+  {
+    log_msg( true, "COLORS_HEAD");
+    m_numberOfValuesToRead = get_value<nleds_t>();
+    m_numberOfValuesToRead *= 3;
+    log_msg( true, "COLORS_HEAD numValuesToRead %d",
+             m_numberOfValuesToRead);
+    m_mode = COLORS_READ;
+    break;
+  }
+  
+  case COLORS_READ:
+  {
+    log_msg( true, "COLORS_READ");
+    get_values( m_buffer->leds_raw(), m_numberOfValuesToRead);
+    m_buffer->show();
+    m_mode = IDLE;
+    break;
+  }
+  
+  case COLORS_ALL:
+  {
+    log_msg( true, "COLORS_ALL");
+    uint8_t  color[3];
+    uint8_t* data  = m_buffer->leds_raw();
+    get_values( color, 3);
+    for( unsigned int led_idx=0; led_idx < m_buffer->size(); ++led_idx)
+    {
+        *(data++) = *(color);
+        *(data++) = *(color+1);
+        *(data++) = *(color+2);
+    }
+    m_buffer->show();
+    m_mode = IDLE;
+    break;
+  }
+  
+  case SET_SIZE:
+  {
+    nleds_t newsize = get_value<nleds_t>();
+    if( newsize != m_buffer->size())
+    {
+      log_msg( true, "SET_SIZE %u", newsize);
+      m_buffer->clear();
+      delete m_buffer;
+      m_buffer = new buffer_t(newsize);
+    }
+    m_mode = IDLE;
+    break;
+  }
+  
+  default:
+    m_serial.print(F("Unknown mode "));
+    m_serial.println(m_mode);
+    m_mode = IDLE;
+    break;
+  }
+}
+
+template<typename nleds_t,typename buffer_t,typename serial_t>
+void CommandParser<nleds_t,buffer_t,serial_t>::testPattern( uint8_t brightness )
+{
+  m_buffer->showColor( 0xFF0000, brightness );
+  _delay_ms(500);
+  m_buffer->showColor( 0x00FF00, brightness );
+  _delay_ms(500);
+  m_buffer->showColor( 0x0000FF, brightness );
+  _delay_ms(500);
+  m_buffer->showColor( 0xFFFF00, brightness );
+  _delay_ms(500);
+  m_buffer->showColor( 0x00FFFF, brightness );
+  _delay_ms(500);
+  m_buffer->showColor( 0xFF00FF, brightness );
+  _delay_ms(500);
+  m_buffer->clear();
+  _delay_ms(500);
+}
+
+template<typename nleds_t,typename buffer_t,typename serial_t>
 template<typename T>
-T CommandParser::get_value()
+T CommandParser<nleds_t,buffer_t,serial_t>::get_value()
 {
   T ret = 0;
   m_currentValueIndex = 0;
@@ -91,16 +388,16 @@ T CommandParser::get_value()
   return ret;
 }
 
-template<>
-inline
-uint8_t CommandParser::get_value<uint8_t>()
-{
-  while( !read_serial());
-  return uint8_t(m_input_buffer[m_index++]);
-}
+// template<typename nleds_t,typename buffer_t,typename serial_t>
+// template<>
+// uint8_t CommandParser<nleds_t,buffer_t,serial_t>::get_value<uint8_t>()
+// {
+//   return uint8_t(m_input_buffer[m_index++]);
+// }
 
+template<typename nleds_t, typename buffer_t,typename serial_t>
 inline
-void CommandParser::get_values( uint8_t* dest, uint16_t len)
+void CommandParser<nleds_t,buffer_t,serial_t>::get_values( uint8_t* dest, uint16_t len)
 {
   m_currentValueIndex = 0;
   while( m_currentValueIndex < len)
@@ -111,3 +408,4 @@ void CommandParser::get_values( uint8_t* dest, uint16_t len)
   }
 }
 
+#endif

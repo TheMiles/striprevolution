@@ -32,7 +32,7 @@ class Strip(object):
                          for d in os.walk("/dev").next()[2]
                          if d.startswith('tty.usbserial') or
                          d.startswith('ttyUSB') or
-                         d.startswith('ttyAMA') ])
+                         d.startswith('ttyAMA') ],reverse=True)
         if os.path.exists('vmodem0'):
             ports = ['vmodem0'] + ports
         return ports[0] if len(ports) else None

@@ -1,8 +1,10 @@
 // -*- mode: c++ -*-
+#ifndef BUFFER_H
+#define BUFFER_H
 
 #include "FastLED.h"
 
-template<class nleds_t=uint8_t, uint8_t DATA_PIN=6, EOrder RGB_ORDER=GRB>
+template<typename nleds_t=uint8_t, uint8_t DATA_PIN=6, EOrder RGB_ORDER=GRB>
 class Buffer
 {
 public:
@@ -64,9 +66,16 @@ public:
           fill_rainbow(leds(), size(), 0, uint8_t(255/size()) );
           m_data.show();
         }
-
+  
+  void clear()
+        {
+          showColor( CRGB::Black);
+        }
+  
 private:
   nleds_t  m_nleds;
   CFastLED m_data;
   CRGB*    m_leds;
 };
+
+#endif
