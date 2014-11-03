@@ -14,7 +14,7 @@ SRCDIR = rpi
 OBJDIR = obj
 SOURCES := $(SRCDIR)/$(TARGET:%=%.cpp)
 OBJECTS := $(OBJDIR)/$(TARGET:%=%.o)
-DEPS    := $(OBJDIR)obj/$(SOURCES:%=%.d)
+DEPS    := $(OBJDIR)/$(SOURCES:%=%.d)
 
 $(DEPS): .rpi_ws281x.rpistamp
 
