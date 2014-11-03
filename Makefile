@@ -1,10 +1,10 @@
-TARGETS = build-arduino build-rpi striplib
+TARGETS = arduino rpi striplib
 
 all: $(TARGETS)
 
-build-arduino:
+arduino:
 	$(MAKE) -f Makefile.arduino
-build-rpi:
+rpi:
 	$(MAKE) -f Makefile.rpi
 
 ARDUINO_TARGETS = std xbee upload upload-std upload-xbee
@@ -26,3 +26,5 @@ striplib: striplib/commands.py
 
 striplib/commands.py: common/Commands.h
 	scripts/make_commands.sh $< > $@
+
+.PHONY: arduino rpi

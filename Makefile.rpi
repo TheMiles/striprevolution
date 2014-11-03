@@ -7,7 +7,6 @@ LIBS     = rpi_ws281x/libws2811.a
 
 TARGET   = striprevolution_rpi
 
-$(TARGET): .rpi_ws281x.rpistamp
 
 all: $(TARGET)
 
@@ -17,7 +16,10 @@ SOURCES := $(SRCDIR)/$(TARGET:%=%.cpp)
 OBJECTS := $(OBJDIR)/$(TARGET:%=%.o)
 DEPS    := $(OBJDIR)obj/$(SOURCES:%=%.d)
 
+$(DEPS): .rpi_ws281x.rpistamp
+
 $(TARGET): $(LIBS)
+
 $(TARGET): $(OBJECTS)
 	g++ $(CXXFLAGS) -o $@ $< $(LIBS)
 

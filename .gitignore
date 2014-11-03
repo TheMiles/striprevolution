@@ -6,3 +6,9 @@ minicom.cap
 *.sublime-workspace
 /rpi_ws281x/
 \#*\#
+/obj/
+/striprevolution_rpi
+/striplib/commands.py
+/*.elf
+/*.hex
+/\.*stamp

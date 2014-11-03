@@ -23,11 +23,14 @@ public:
           , m_leds(0)
         {
           m_leds = new uint8_t[m_nleds*3];
-          m_ledstring.count   = m_nleds;
-          m_ledstring.freq    = freq;
-          m_ledstring.dmanum  = dmanum;
-          m_ledstring.gpionum = gpionum;
-          m_ledstring.invert  = invert;
+          m_ledstring.freq               = freq;
+          m_ledstring.dmanum             = dmanum;
+          m_ledstring.channel[0].count   = m_nleds;
+          m_ledstring.channel[0].gpionum = gpionum;
+          m_ledstring.channel[0].invert  = invert;
+          m_ledstring.channel[1].count   = 0;
+          m_ledstring.channel[1].gpionum = 0;
+          m_ledstring.channel[1].invert  = 0;
           if(ws2811_init(&m_ledstring))
               throw RPIBufferError("Error calling ws2811_init");
           m_initialized = true;
@@ -46,7 +49,7 @@ public:
   
   ws2811_led_t* leds()
         {
-          return m_ledstring.leds;
+          return m_ledstring.channel[0].leds;
         }
   
   uint8_t* leds_raw()
@@ -91,7 +94,7 @@ public:
 
   void show()
         { 
-          ws2811_led_t* dest = m_ledstring.leds;
+          ws2811_led_t* dest = leds();
           uint8_t*       src = m_leds;
           for( nleds_t i = 0; i < m_nleds; ++i )
           {
