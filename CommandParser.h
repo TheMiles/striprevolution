@@ -4,8 +4,18 @@
 #include <stdint.h>
 #include <string.h>
 
+#ifndef LINUX
 #include <util/delay.h>
 #include <WString.h>
+// needed for free memory calculation
+extern int* __brkval;
+#else
+#define F(x) (x)
+#include <cstdarg>
+#include <cstdio>
+#include <unistd.h>
+#define _delay_ms(x) usleep(1000*(x))
+#endif
 
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
@@ -43,7 +53,9 @@ public:
   void init(nleds_t nleds);
   
   void parse_input();
-  
+
+  void testPattern();
+
 private:
   // logging takes loads of SRAM, so we wrap it with a macro and make it
   // optional
@@ -57,8 +69,6 @@ private:
 
   bool read_serial();
   
-  void testPattern( uint8_t brightness=255);
-
   template<typename T> T get_value();
 
   void get_values( uint8_t* dest, uint16_t len);
@@ -102,19 +112,21 @@ void reset_func()
 void (*reset_func)() = 0;
 #endif
 
-// needed for free memory calculation
-extern int* __brkval;
-
 template<typename nleds_t,typename buffer_t,typename serial_t>
 CommandParser<nleds_t,buffer_t,serial_t>::CommandParser(serial_t& serial)
 : m_mode( IDLE )
+#ifdef SERIAL_DEBUG
+, m_debug( true)
+#else
 , m_debug( false )
+#endif
 , m_numberOfValuesToRead( 0 )
 , m_currentValueIndex( 0 )
 , m_avail( 0 )
 , m_readBytes( 0 )
 , m_index( 0 )
 , m_serial(serial)
+, m_buffer(0)
 {}
 
 template<typename nleds_t,typename buffer_t,typename serial_t>
@@ -131,6 +143,19 @@ CommandParser<nleds_t,buffer_t,serial_t>::~CommandParser()
 }
 
 #ifndef SAVEMEM
+#ifdef LINUX
+template<typename nleds_t,typename buffer_t,typename serial_t>
+void CommandParser<nleds_t,buffer_t,serial_t>::log_msg_real(
+    bool debug, const char * format_string, ... ) const
+{
+  if( !(m_debug && debug) ) return;
+  va_list args;
+  va_start (args, format_string);
+  printf(format_string, args);
+  printf("\n");
+  va_end (args);
+}
+#else
 template<typename nleds_t,typename buffer_t,typename serial_t>
 void CommandParser<nleds_t,buffer_t,serial_t>::log_msg_real(
     bool debug, const char * format_string, ... ) const
@@ -142,6 +167,7 @@ void CommandParser<nleds_t,buffer_t,serial_t>::log_msg_real(
   m_serial.println( m_log_buffer );
   va_end (args);
 }
+#endif
 #endif
 
 template<typename nleds_t,typename buffer_t,typename serial_t>
@@ -172,22 +198,17 @@ void CommandParser<nleds_t,buffer_t,serial_t>::parse_input()
       m_mode = COMMAND;
       ++m_index;
     }
-    else if(m_input_buffer[m_index] == char(0xff)) {
-      // workaround for XBees
-      ++m_index;
-    }
+    // else if(m_input_buffer[m_index] == char(0xff)) {
+    //   // workaround for XBees
+    //   ++m_index;
+    // }
     else {
-      m_serial.println( F("Wrong magic number"));
-#ifdef SERIAL_DEBUG
-      m_serial.print("BEGIN ");
-      while(m_index < m_readBytes)
-      {
-        m_serial.print(char(m_input_buffer[m_index++]));
-      }
-      m_serial.println(" END");
-#else
-      ++m_index;
+      m_serial.print( F("Wrong magic number"));
+      m_serial.println( char(m_input_buffer[m_index]));
+#ifdef LINUX
+      printf("Wrong magic number: 0x%02x\n",char(m_input_buffer[m_index]));
 #endif
+      ++m_index;
     }
     break;
     
@@ -250,7 +271,7 @@ void CommandParser<nleds_t,buffer_t,serial_t>::parse_input()
       break;
     case COMMAND_DEBUG:
       log_msg( true, "COMMAND_DEBUG");
-#ifndef SAVEMEM
+#ifndef SERIAL_DEBUG
       m_debug = !m_debug;
 #endif
       m_mode = IDLE;
@@ -272,9 +293,11 @@ void CommandParser<nleds_t,buffer_t,serial_t>::parse_input()
       break;
     case COMMAND_MEMFREE:
       log_msg( true, "COMMAND_MEMFREE");
+#ifndef LINUX
       m_serial.print(F("Free RAM: "));
       m_serial.println(__brkval ? int(SP)-int(__brkval) :
                     int(SP)-int(__malloc_heap_start));
+#endif
       m_mode = IDLE;
       break;
     default:
@@ -353,19 +376,19 @@ void CommandParser<nleds_t,buffer_t,serial_t>::parse_input()
 }
 
 template<typename nleds_t,typename buffer_t,typename serial_t>
-void CommandParser<nleds_t,buffer_t,serial_t>::testPattern( uint8_t brightness )
+void CommandParser<nleds_t,buffer_t,serial_t>::testPattern()
 {
-  m_buffer->showColor( 0xFF0000, brightness );
+  m_buffer->showColor( 0xFF, 0x00, 0x00);
   _delay_ms(500);
-  m_buffer->showColor( 0x00FF00, brightness );
+  m_buffer->showColor( 0x00, 0xFF, 0x00);
   _delay_ms(500);
-  m_buffer->showColor( 0x0000FF, brightness );
+  m_buffer->showColor( 0x00, 0x00, 0xFF);
   _delay_ms(500);
-  m_buffer->showColor( 0xFFFF00, brightness );
+  m_buffer->showColor( 0xFF, 0xFF, 0x00);
   _delay_ms(500);
-  m_buffer->showColor( 0x00FFFF, brightness );
+  m_buffer->showColor( 0x00, 0xFF, 0xFF);
   _delay_ms(500);
-  m_buffer->showColor( 0xFF00FF, brightness );
+  m_buffer->showColor( 0xFF, 0x00, 0xFF);
   _delay_ms(500);
   m_buffer->clear();
   _delay_ms(500);

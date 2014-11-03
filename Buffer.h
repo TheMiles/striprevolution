@@ -37,6 +37,11 @@ public:
           return m_nleds;
         }
   
+  void showColor( uint8_t red, uint8_t green, uint8_t blue ) 
+        { 
+          showColor( CRGB( red, green, blue));
+        }
+  
   void showColor( const CRGB& color ) 
         { 
           CRGB* pos = m_leds;
