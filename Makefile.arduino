@@ -1,0 +1,49 @@
+# -*- mode: makefile -*-
+
+F_CPU  = 16000000
+DEVICE = atmega328p
+
+AVRDUDE_BAUDRATE = 57600
+AVRDUDE_DEVICE   = /dev/ttyUSB0
+
+CONFIGFLAGS = -DSAVEMEM
+
+LIBRARIES = libArduino libFastLED
+PROGRAMS  = striprevolution
+
+FIRMWARES = std xbee
+all:
+	@for i in `ls .*.fwstamp 2>/dev/null | sed 's,^.arduino-\(.*\)\.fwstamp$$,\1,'` std; do \
+	  $(MAKE) -f $(firstword $(MAKEFILE_LIST)) $$i; break; \
+	done
+
+xbee: CONFIGFLAGS += -DBAUDRATE=9600
+xbee: striprevolution_SUFFIX = -xbee
+upload: upload-std
+
+libArduino_DIR   = $(ARDUINO_BASEDIR)/hardware/arduino/cores/arduino
+libArduino_FLAGS = \
+	-I$(libArduino_DIR) \
+	-I$(ARDUINO_BASEDIR)/hardware/arduino/variants/standard
+libArduino_SRCS  = \
+	$(wildcard $(libArduino_DIR)/*.c) \
+	$(wildcard $(libArduino_DIR)/avr-libc/*.c) \
+	$(wildcard $(libArduino_DIR)/*.cpp)
+
+libFastLED_DIR   = FastLED
+libFastLED_FLAGS = $(libArduino_FLAGS)
+libFastLED_SRCS  = $(wildcard $(libFastLED_DIR)/*.cpp)
+
+striprevolution_DIR   = .
+striprevolution_FLAGS = -Icommon -I$(libFastLED_DIR) $(libArduino_FLAGS) $(CONFIGFLAGS) -Wall
+striprevolution_SRCS  = $(wildcard arduino/*.cpp)
+
+help:
+	@echo "Available make options:"
+	@echo
+	@echo "  $(MAKE) [std]         build standard image"
+	@echo "  $(MAKE) xbee          build xbee image"
+	@echo "  $(MAKE) upload[-std]  upload standard image"
+	@echo "  $(MAKE) upload-xbee   upload xbee image"
+
+include make/arduino.make

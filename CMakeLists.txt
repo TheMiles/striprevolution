@@ -31,8 +31,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSAVEMEM")
 set(ARDUINO_DEFAULT_BOARD atmega328) # Default Board ID, when not specified
 set(ARDUINO_DEFAULT_PORT /dev/ttyUSB0) # Default Port, when not specified
 
-
+include_directories( arduino, common)
 generate_arduino_firmware(striprevolution
-                          SRCS striprevolution.cpp
-                          HDRS Buffer.h Commands.h CommandParser.h
+                          SRCS arduino/striprevolution.cpp
+                          HDRS arduino/Buffer.h common/Commands.h common/CommandParser.h
                          )

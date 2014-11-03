@@ -1,0 +1,45 @@
+# -*- mode: makefile -*-
+
+FLAGS    = -DLINUX -DSERIAL_DEBUG -DBAUDRATE=115200
+INCLUDES = -Icommon -Irpi_ws281x 
+CXXFLAGS = -g -Wall
+LIBS     = rpi_ws281x/libws2811.a
+
+TARGET   = striprevolution_rpi
+
+$(TARGET): .rpi_ws281x.rpistamp
+
+all: $(TARGET)
+
+SRCDIR = rpi
+OBJDIR = obj
+SOURCES := $(SRCDIR)/$(TARGET:%=%.cpp)
+OBJECTS := $(OBJDIR)/$(TARGET:%=%.o)
+DEPS    := $(OBJDIR)obj/$(SOURCES:%=%.d)
+
+$(TARGET): $(LIBS)
+$(TARGET): $(OBJECTS)
+	g++ $(CXXFLAGS) -o $@ $< $(LIBS)
+
+$(OBJDIR)/%.cpp.d: $(SRCDIR)/%.cpp $(OBJDIR)
+	g++ -MM $(CXXFLAGS) $(FLAGS) $(INCLUDES) $< > $@
+
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp $(OBJDIR)
+	g++ $(CXXFLAGS) $(FLAGS) $(INCLUDES) -c -o $@ $<
+
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
+
+.%.rpistamp: %
+	(cd $^ && scons) && touch .$^.rpistamp
+
+rpi_ws281x:
+	git clone git@github.com:jgarff/rpi_ws281x.git
+
+clean:
+	rm -f $(TARGET)
+	rm -f $(OBJECTS)
+	rm -f $(DEPS)
+	rm -f .*.rpistamp
+
+-include $(DEPS)

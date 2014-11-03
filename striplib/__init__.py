@@ -1,23 +1,6 @@
 import os, serial, sys, time
 
-# connect parameters for XBee: baudrate=9600, timeout=2
-
-# import command codes from Commands.h
-Command = None
-if not os.path.exists('Commands.h'):
-    print "Commands.h not found"
-    sys.exit(0)
-else:
-    f = open('Commands.h')
-    commands = {}
-    for line in f:
-        if line.startswith("#define COMMAND_"):
-            tmp, cmd, byte = line.split()
-            cmd = cmd[cmd.find('_')+1:]
-            commands[cmd] = int(byte,16)
-    Command = type('Command', (object,), commands)
-    f.close()
-    del f
+from striplib.commands import Command
 
 MAGIC = 0x42
 

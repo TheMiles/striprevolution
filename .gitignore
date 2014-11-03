@@ -4,3 +4,5 @@ minicom.cap
 *~
 *.pyc
 *.sublime-workspace
+/rpi_ws281x/
+\#*\#
