@@ -10,7 +10,7 @@ timeout = 1
 
 # parameters for XBee
 #speed = 9600
-#timeout = 2
+#timeout = 1
 
 # python 2.5 compatibility (i.e. N900)
 if not 'bytearray' in dir(__builtins__):
