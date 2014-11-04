@@ -2,15 +2,7 @@
 
 import colorsys, math, signal, sys, time, os, select, errno
 
-from striplib import Strip
-
-# parameters for direct connection
-speed = 115200
-timeout = 1
-
-# parameters for XBee
-#speed = 9600
-#timeout = 1
+from striplib.strip import Strip
 
 # python 2.5 compatibility (i.e. N900)
 if not 'bytearray' in dir(__builtins__):
@@ -18,7 +10,7 @@ if not 'bytearray' in dir(__builtins__):
     def bytearray( bytelist):
         return array.array('b',bytelist)
 
-class Rainbow:
+class Rainbow(object):
     def __init__(self,nleds,max,stepsize=math.pi/256.):
         self.max      = max
         self.nleds    = nleds
@@ -68,8 +60,7 @@ def main():
     parser.add_argument('--timeout', type=int, default=1,
                         help='serial port timeout')
     args = parser.parse_args()
-    print vars(args)
-    size = max( [ len(arg[0]) for arg in vars(args) ])
+    size = max( [ len(arg) for arg in vars(args).keys() ])
     for name,val in vars(args).items():
         name = name.ljust(size)
         if isinstance(val,float):
