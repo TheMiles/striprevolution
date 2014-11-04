@@ -18,13 +18,6 @@ if not 'bytearray' in dir(__builtins__):
     def bytearray( bytelist):
         return array.array('b',bytelist)
 
-args = [
-    ('num_leds',      5),
-    ('max_intensity', 0xf),
-    ('min_delay',     1/20.),
-    ('stepsize',      math.pi/256.),
-]
-
 class Rainbow:
     def __init__(self,nleds,max,stepsize=math.pi/256.):
         self.max      = max
@@ -58,18 +51,26 @@ def signal_handler(signal, frame):
     print "Caught SIGINT, stopping"
 
 def main():
-    global args
-    for i, arg in enumerate(args):
-        if len(sys.argv) <= i+1:
-            break
-        val = sys.argv[i+1]
-        if isinstance(val,str) and val.startswith('0x'):
-            val = int(val, 16)
-        args[i] = (arg[0], val)
-
-    size = max( [ len(arg[0]) for arg in args ])
-    for arg in args:
-        name, val = arg
+    import argparse
+    parser = argparse.ArgumentParser(description='Animate colors.')
+    parser.add_argument('device', type=str, default=None, nargs='?',
+                        help='serial device')
+    parser.add_argument('--num_leds', type=int, default=5,
+                        help='number of leds')
+    parser.add_argument('--max_intensity', type=chr, default=0xf,
+                        help='maximum intensity')
+    parser.add_argument('--min_delay', type=float, default=1/20.,
+                        help='minimum delay in seconds')
+    parser.add_argument('--stepsize', type=float, default=math.pi/256.,
+                        help='sinus stepsize')
+    parser.add_argument('--speed', type=int, default=115200,
+                        help='serial port baud rate')
+    parser.add_argument('--timeout', type=int, default=1,
+                        help='serial port timeout')
+    args = parser.parse_args()
+    print vars(args)
+    size = max( [ len(arg[0]) for arg in vars(args) ])
+    for name,val in vars(args).items():
         name = name.ljust(size)
         if isinstance(val,float):
             print "%s: %.3f" % (name,val)
@@ -77,16 +78,16 @@ def main():
             print "%s: %s"   % (name,val)
     print
     
-    vars = dict(args)
-    
+    port = args.device
     strip = Strip()
-    port = strip.findDevice()
+    if not port:
+        port = strip.findDevice()
     if not port:
         print "No device found"
         sys.exit(1)
 
     print "Opening '%s'" % port
-    if not strip.connect(port, speed=speed, timeout=timeout):
+    if not strip.connect(port, speed=args.speed, timeout=args.timeout):
         sys.exit(1)
     retries = 10
     while retries > 0:
@@ -101,13 +102,13 @@ def main():
     strip.updateConfig(True)
     if int(strip.config['debug']) == 1:
         strip.toggleDebug()
-    strip.setSize( int(vars['num_leds']))
+    strip.setSize( int(args.num_leds))
 
     print "Starting effect"
-    r = Rainbow( int(  vars['num_leds']     ),
-                 int(  vars['max_intensity']),
-                 float(vars['stepsize']     ))
-    min_delay = float(vars['min_delay'])
+    r = Rainbow( int(  args.num_leds),
+                 int(  args.max_intensity),
+                 float(args.stepsize))
+    min_delay =  float(args.min_delay)
     prev = time.time()
     cur = time.time()
     signal.signal(signal.SIGINT, signal_handler)

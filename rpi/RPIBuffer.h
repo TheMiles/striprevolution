@@ -38,7 +38,6 @@ public:
 
   ~RPIBuffer()
         {
-          std::cout << __PRETTY_FUNCTION__ << std::endl;
           if( m_initialized)
           {
             clear();

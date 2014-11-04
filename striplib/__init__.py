@@ -70,7 +70,7 @@ class Strip(object):
 
     def updateConfig(self, printConfig=False):
         self.write( bytearray( [MAGIC,Command.CONF] ))
-        time.sleep(0.1)
+        time.sleep(0.5)
         config = ""
         avail = self.conn.inWaiting()
         while avail > 0:

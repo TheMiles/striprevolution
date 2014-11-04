@@ -3,7 +3,9 @@
 #include "CommandParser.h"
 
 #include <cstdlib>
+#include <cstdio>
 #include <signal.h>
+#include <string>
 
 #define NUM_LEDS 5
 
@@ -17,16 +19,20 @@ void sig_handler(int signo)
   doIterate = false;
 }
 
-int main() {
+int main( int argc, char** argv) {
   struct sigaction sa;
   memset( &sa, 0, sizeof(sa) );
   sa.sa_handler = &sig_handler;
   sigfillset(&sa.sa_mask);
   sigaction(SIGINT, &sa, NULL);
-
   try
   {
-    RPISerial serial("/dev/ttyAMA0");
+    std::string filename = "/dev/ttyAMA0";
+    if( argc > 1)
+        filename = argv[1];
+    
+    printf( "Using %s\n", filename.c_str());
+    RPISerial serial(filename.c_str());
     CommandParser<nleds_t,LEDBuffer,RPISerial> command_parser(serial);
     command_parser.init(NUM_LEDS);
     while(doIterate)

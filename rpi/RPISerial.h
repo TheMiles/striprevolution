@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <fcntl.h>
 #include <termios.h>
+#include <pty.h>
 
 #include <sstream>
 
@@ -22,38 +23,8 @@ typedef std::runtime_error RPISerialError;
     
 class RPISerial
 {
-  static void throwError( const char* caller)
+  static void init_pty( struct termios& tty)
         {
-            std::ostringstream oss;
-            oss << "Error " << errno << " from " << caller << ": " << strerror(errno);
-            throw RPISerialError( oss.str());
-        }
-  
-public:
-  RPISerial( const char* device)
-  : m_valid(0)
-        {
-          m_fd = open( device, O_RDWR| O_NOCTTY );
-          if( m_fd < 0)
-              throwError("open");
-        }
-  
-  ~RPISerial()
-        {
-          if( m_fd > 0)
-              close( m_fd);
-        }
-  
-  void begin( int baudrate)
-        {
-          struct termios tty;
-          struct termios tty_old;
-          memset (&tty, 0, sizeof tty);
-          /* Error Handling */
-          if ( tcgetattr ( m_fd, &tty ) != 0 )
-              throwError("tcgetattr");
-          /* Save old tty parameters */
-          tty_old = tty;
           /* Set Baud Rate */
           cfsetospeed (&tty, (speed_t)TC_BAUDRATE);
           cfsetispeed (&tty, (speed_t)TC_BAUDRATE);
@@ -75,7 +46,63 @@ public:
 
           /* Make raw */
           cfmakeraw(&tty);
+        }
+  
+  static int pty_helper()
+        {
+          int amaster;
+          int aslave;
+          char name[128];
+          memset(name, 0, 128);
+          
+          struct termios tty;
+          memset(&tty,0,sizeof(tty));
+          init_pty(tty);
+          if( openpty( &amaster, &aslave, name, &tty, NULL) < 0)
+              throw std::runtime_error("Error opening pty");
+          printf("Opened %s\n", name);
+          return amaster;
+        }
 
+  static void throwError( const char* caller)
+        {
+            std::ostringstream oss;
+            oss << "Error " << errno << " from " << caller << ": " << strerror(errno);
+            throw RPISerialError( oss.str());
+        }
+  
+public:
+  RPISerial( const char* device)
+  : m_valid(0)
+        {
+          if( strcmp(device,"pty") == 0)
+              m_fd = pty_helper();
+          else
+              m_fd = open( device, O_RDWR| O_NOCTTY );
+
+          if( m_fd < 0)
+              throwError("open");
+        }
+  
+  ~RPISerial()
+        {
+          if( m_fd > 0)
+              close( m_fd);
+        }
+  
+  void begin( int baudrate)
+        {
+          struct termios tty;
+          struct termios tty_old;
+          memset (&tty, 0, sizeof tty);
+          /* Error Handling */
+          if ( tcgetattr ( m_fd, &tty ) != 0 )
+              throwError("tcgetattr");
+          /* Save old tty parameters */
+          tty_old = tty;
+          
+          init_pty(tty);
+          
           /* Flush Port, then applies attributes */
           tcflush( m_fd, TCIFLUSH );
           
@@ -134,32 +161,29 @@ public:
           FD_SET(m_fd, &rfds);
           
           int retval = 0;
-          struct timeval tv;
-          tv.tv_sec = 0;
-          //tv.tv_usec = 500*1000;
-          tv.tv_usec = 0;
-            retval = select(m_fd+1, &rfds, NULL, NULL, &tv);
-            if (retval == -1)
-            {
-              if( errno == EINTR)
-                  return 0;
-              else
-                  throwError("select");
-            }
-            
-            if (retval > 0)
-            {
-              m_valid = 0;
-              raw_read();
+          struct timeval tv = {1,0};
+          retval = select(m_fd+1, &rfds, NULL, NULL, &tv);
+          if (retval == -1)
+          {
+            if( errno == EINTR)
+                return 0;
+            else
+                throwError("select");
+          }
+          
+          if (retval > 0)
+          {
+            m_valid = 0;
+            raw_read();
 #ifdef SERIAL_DEBUG
-              std:: cout << "\e[32m" << "R :";
-              for( size_t i=0; i < m_valid; ++i)
-                  std::cout <<" 0x" << std::hex << int(m_buffer[i]) << std::dec;
-              std::cout << "\e[0m" << std::endl;
+            std:: cout << "\e[32m" << "R :";
+            for( size_t i=0; i < m_valid; ++i)
+                std::cout <<" 0x" << std::hex << int(m_buffer[i]) << std::dec;
+            std::cout << "\e[0m" << std::endl;
 #endif
-              return m_valid;
-            }
-                    
+            return m_valid;
+          }
+          
           return 0;
         }
   

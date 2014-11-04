@@ -1,6 +1,6 @@
 # -*- mode: makefile -*-
 
-FLAGS    = -DLINUX -DSERIAL_DEBUG -DBAUDRATE=115200
+FLAGS    = -DLINUX -DBAUDRATE=115200
 INCLUDES = -Icommon -Irpi_ws281x 
 CXXFLAGS = -g -Wall
 LIBS     = rpi_ws281x/libws2811.a
@@ -14,17 +14,17 @@ SRCDIR = rpi
 OBJDIR = obj
 SOURCES := $(SRCDIR)/$(TARGET:%=%.cpp)
 OBJECTS := $(OBJDIR)/$(TARGET:%=%.o)
-DEPS    := $(OBJDIR)/$(SOURCES:%=%.d)
+DEPS    := $(OBJDIR)/$(TARGET:%=%.cpp.d)
 
 $(DEPS): .rpi_ws281x.rpistamp
 
 $(TARGET): $(LIBS)
 
 $(TARGET): $(OBJECTS)
-	g++ $(CXXFLAGS) -o $@ $< $(LIBS)
+	g++ $(CXXFLAGS) -o $@ $< $(LIBS) -lutil
 
 $(OBJDIR)/%.cpp.d: $(SRCDIR)/%.cpp $(OBJDIR)
-	g++ -MM $(CXXFLAGS) $(FLAGS) $(INCLUDES) $< > $@
+	g++ -MM $(CXXFLAGS) $(FLAGS) $(INCLUDES) -MQ $(patsubst %.cpp.d,%.o,$@) $< > $@
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.cpp $(OBJDIR)
 	g++ $(CXXFLAGS) $(FLAGS) $(INCLUDES) -c -o $@ $<

@@ -110,10 +110,11 @@ class LEDDialog(QDialog):
 class Widget(QWidget):
     timer_timeout = 100
 
-    def __init__(self):
+    def __init__(self, device):
         super(Widget,self).__init__()
         self.strip = Strip()
         self.strip.debug = global_debug
+        self.device = device
         self.initGUI()
         self.setInputState(False)
         self.setMinimumSize( 600, 400)
@@ -127,15 +128,16 @@ class Widget(QWidget):
     def initSerial(self):
         if self.strip.isConnected():
             return
-        port = self.strip.findDevice()
-        if not port:
+        if not self.device:
+            self.device = self.strip.findDevice()
+        if not self.device:
             self.printLog("No device found")
             return
-        self.printLog("Opening '%s'" % port)
-        if not self.strip.connect(port, speed=speed, timeout=timeout):
+        self.printLog("Opening '%s'" % self.device)
+        if not self.strip.connect(self.device, speed=speed, timeout=timeout):
             sys.exit(1)
         self.printLog("Opened  '%s' with speed %i" %
-                      (port, self.strip.baudrate()))
+                      (self.device, self.strip.baudrate()))
         
         retries = 10
         while retries > 0:
@@ -333,7 +335,17 @@ class Widget(QWidget):
         
 def main():
     a = QApplication(sys.argv)
-    w = Widget()
+
+    device = None
+    import argparse
+    parser = argparse.ArgumentParser(description='striprevolution control widget')
+    parser.add_argument('device', metavar='DEVICE', type=str, nargs='?', default=None,
+                        help='serial device')
+    
+    args = parser.parse_args()
+
+    w = Widget(args.device)
+    
     w.show()
     return a.exec_()
 
