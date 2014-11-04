@@ -11,7 +11,7 @@ LDFLAGS  = -Wl,--gc-sections
 PLATFORM := $(shell uname -s)
 ifeq ($(PLATFORM),Darwin)
 	ARDUINO_BASEDIR := /Applications/Arduino.app/Contents/Resources/Java
-	AVRTOOL_PREFIX  := $(AVRTOOL_PREFIX)/hardware/tools/avr
+	AVRTOOL_PREFIX  := $(ARDUINO_BASEDIR)/hardware/tools/avr
 	AVRDUDE_CONF    := $(AVRTOOL_PREFIX)/etc/avrdude.conf
 else
 	AVRTOOL_PREFIX  := /usr

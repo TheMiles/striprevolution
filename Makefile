@@ -1,6 +1,6 @@
-TARGETS = arduino striplib
+TARGETS = striplib arduino
 
-RPI_TARGET := $(shell grep -q BCM2708 /proc/cpuinfo && echo rpi)
+RPI_TARGET := $(shell [ -e /proc/cpuinfo ] && grep -q BCM2708 /proc/cpuinfo && echo rpi)
 
 TARGETS += $(RPI_TARGET)
 all: $(TARGETS)
