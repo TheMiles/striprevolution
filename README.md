@@ -55,3 +55,4 @@ Command           | code |    data length    |        description
  `SETSIZE`        | 0x70 |                 1 | Resizes the current strip length. The new strip length is given by the single data byte (valid range: 0-255).
  `PING`           | 0x71 |                 0 | Returns the number '0'.
  `MEMFREE`        | 0x72 |                 0 | Returns the memory available in bytes.
+ `VERSION`        | 0x73 |                 0 | Returns the version of the striprevolution firmware
