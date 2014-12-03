@@ -20,14 +20,15 @@ extern int* __brkval;
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
 
-#define LOG_BUFSIZE   128
-#define INPUT_BUFSIZE 128
-
 #ifndef BAUDRATE
 #define BAUDRATE      115200
 #endif
 
-#define MAGIC 0x42
+static const uint8_t  LOG_BUFSIZE   = 128;
+static const uint8_t  INPUT_BUFSIZE = 128;
+
+static const uint8_t  MAGIC = 0x42;
+
 static const uint8_t  VERSION_MAJ =   0;
 static const uint16_t VERSION_MIN =   1;
 
