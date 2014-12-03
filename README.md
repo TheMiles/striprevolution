@@ -33,6 +33,8 @@ All LEDs off
 Commands
 --------
 
+This is the information for the current version 0.1
+
 Each command block has to start showing a magic number 66 (0x42) in the first byte.
 
 The second byte shows the command

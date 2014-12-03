@@ -15,5 +15,6 @@
 #define COMMAND_SETSIZE      0x70
 #define COMMAND_PING         0x71
 #define COMMAND_MEMFREE      0x72
+#define COMMAND_VERSION      0x73
 
 #endif

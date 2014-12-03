@@ -28,6 +28,8 @@ extern int* __brkval;
 #endif
 
 #define MAGIC 0x42
+static const uint8_t  VERSION_MAJ =   0;
+static const uint16_t VERSION_MIN =   1;
 
 #include "Commands.h"
 
@@ -298,6 +300,14 @@ void CommandParser<nleds_t,buffer_t,serial_t>::parse_input()
       m_serial.println(__brkval ? int(SP)-int(__brkval) :
                     int(SP)-int(__malloc_heap_start));
 #endif
+      m_mode = IDLE;
+      break;
+    case COMMAND_VERSION:
+      log_msg( true, "COMMAND_VERSION" );
+      m_serial.print( F("Version: ") );
+      m_serial.print( VERSION_MAJ );
+      m_serial.print( F(".") );
+      m_serial.println( VERSION_MIN );
       m_mode = IDLE;
       break;
     default:
