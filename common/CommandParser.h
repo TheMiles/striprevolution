@@ -88,7 +88,7 @@ private:
   int m_index;
   
   serial_t& m_serial;
-  buffer_t* m_buffer;
+  buffer_t  m_buffer;
 };
 
 // that's the way a reset should be done but the device will just keep on 
@@ -129,20 +129,19 @@ CommandParser<nleds_t,buffer_t,serial_t>::CommandParser(serial_t& serial)
 , m_readBytes( 0 )
 , m_index( 0 )
 , m_serial(serial)
-, m_buffer(0)
 {}
 
 template<typename nleds_t,typename buffer_t,typename serial_t>
 void CommandParser<nleds_t,buffer_t,serial_t>::init(nleds_t nleds)
 {
-  m_buffer = new buffer_t(nleds);
+  m_buffer.init(nleds);
   m_serial.begin(BAUDRATE);
 }
 
 template<typename nleds_t,typename buffer_t,typename serial_t>
 CommandParser<nleds_t,buffer_t,serial_t>::~CommandParser()
 {
-  if( m_buffer) delete m_buffer;
+  m_buffer.free();
 }
 
 #ifndef SAVEMEM
@@ -234,7 +233,7 @@ void CommandParser<nleds_t,buffer_t,serial_t>::parse_input()
       break;
     case COMMAND_BLANK:
       log_msg( true, "COMMAND_BLANK");
-      m_buffer->clear();
+      m_buffer.clear();
       m_mode = IDLE;
       break;
     case COMMAND_BRIGHT:
@@ -243,14 +242,14 @@ void CommandParser<nleds_t,buffer_t,serial_t>::parse_input()
       break;
     case COMMAND_RAINBOW:
       log_msg( true, "COMMAND_RAINBOW");
-      m_buffer->rainbow();
+      m_buffer.rainbow();
       m_mode = IDLE;
       break;
     case COMMAND_STATE:
     {
       log_msg( true, "COMMAND_STATE");
-      uint8_t* leds =  m_buffer->leds_raw();
-      unsigned int n = m_buffer->size(); n*=3;
+      uint8_t* leds =  m_buffer.leds_raw();
+      unsigned int n = m_buffer.size(); n*=3;
       for( unsigned int i=0; i < n; ++i)
           m_serial.print((char) *(leds+i));
       m_serial.flush();
@@ -264,10 +263,10 @@ void CommandParser<nleds_t,buffer_t,serial_t>::parse_input()
       break;
     case COMMAND_CONF:
       m_serial.print(F("nleds: "));
-      m_serial.println(m_buffer->size());
+      m_serial.println(m_buffer.size());
       m_serial.print(F("nleds_max: "));
       m_serial.println(nleds_t(-1));
-      m_serial.println(F("speed:  "STR(BAUDRATE)));
+      m_serial.println(F("speed:  " STR(BAUDRATE)));
       m_serial.print( F("debug: "));
       m_serial.println(m_debug);
       m_mode = IDLE;
@@ -322,7 +321,7 @@ void CommandParser<nleds_t,buffer_t,serial_t>::parse_input()
   {
     uint8_t bright_val = get_value<uint8_t>();
     log_msg( true, "SET_BRIGHT %d", bright_val);
-    m_buffer->setBrightness(bright_val);
+    m_buffer.setBrightness(bright_val);
     m_mode = IDLE;
     break;
   }
@@ -341,8 +340,8 @@ void CommandParser<nleds_t,buffer_t,serial_t>::parse_input()
   case COLORS_READ:
   {
     log_msg( true, "COLORS_READ");
-    get_values( m_buffer->leds_raw(), m_numberOfValuesToRead);
-    m_buffer->show();
+    get_values( m_buffer.leds_raw(), m_numberOfValuesToRead);
+    m_buffer.show();
     m_mode = IDLE;
     break;
   }
@@ -351,15 +350,15 @@ void CommandParser<nleds_t,buffer_t,serial_t>::parse_input()
   {
     log_msg( true, "COLORS_ALL");
     uint8_t  color[3];
-    uint8_t* data  = m_buffer->leds_raw();
+    uint8_t* data  = m_buffer.leds_raw();
     get_values( color, 3);
-    for( unsigned int led_idx=0; led_idx < m_buffer->size(); ++led_idx)
+    for( unsigned int led_idx=0; led_idx < m_buffer.size(); ++led_idx)
     {
         *(data++) = *(color);
         *(data++) = *(color+1);
         *(data++) = *(color+2);
     }
-    m_buffer->show();
+    m_buffer.show();
     m_mode = IDLE;
     break;
   }
@@ -367,12 +366,11 @@ void CommandParser<nleds_t,buffer_t,serial_t>::parse_input()
   case SET_SIZE:
   {
     nleds_t newsize = get_value<nleds_t>();
-    if( newsize != m_buffer->size())
+    if( newsize != m_buffer.size())
     {
       log_msg( true, "SET_SIZE %u", newsize);
-      m_buffer->clear();
-      delete m_buffer;
-      m_buffer = new buffer_t(newsize);
+      m_buffer.clear();
+      m_buffer.init(newsize);
     }
     m_mode = IDLE;
     break;
@@ -389,19 +387,19 @@ void CommandParser<nleds_t,buffer_t,serial_t>::parse_input()
 template<typename nleds_t,typename buffer_t,typename serial_t>
 void CommandParser<nleds_t,buffer_t,serial_t>::testPattern()
 {
-  m_buffer->showColor( 0xFF, 0x00, 0x00);
+  m_buffer.showColor( 0xFF, 0x00, 0x00);
   _delay_ms(500);
-  m_buffer->showColor( 0x00, 0xFF, 0x00);
+  m_buffer.showColor( 0x00, 0xFF, 0x00);
   _delay_ms(500);
-  m_buffer->showColor( 0x00, 0x00, 0xFF);
+  m_buffer.showColor( 0x00, 0x00, 0xFF);
   _delay_ms(500);
-  m_buffer->showColor( 0xFF, 0xFF, 0x00);
+  m_buffer.showColor( 0xFF, 0xFF, 0x00);
   _delay_ms(500);
-  m_buffer->showColor( 0x00, 0xFF, 0xFF);
+  m_buffer.showColor( 0x00, 0xFF, 0xFF);
   _delay_ms(500);
-  m_buffer->showColor( 0xFF, 0x00, 0xFF);
+  m_buffer.showColor( 0xFF, 0x00, 0xFF);
   _delay_ms(500);
-  m_buffer->clear();
+  m_buffer.clear();
   _delay_ms(500);
 }
 

@@ -1,4 +1,4 @@
-import time
+import time, sys
 
 from PyQt4.QtCore import QTimer, QSignalMapper
 

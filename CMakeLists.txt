@@ -17,7 +17,7 @@ project(ArduinoExample C CXX)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 
 # disable for proper debug logging
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSAVEMEM")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSAVEMEM -DHAVE_ARDUINO")
 
 # enable for serial debugging
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DSERIALDEBUG")
@@ -34,5 +34,5 @@ set(ARDUINO_DEFAULT_PORT /dev/ttyUSB0) # Default Port, when not specified
 include_directories( arduino, common)
 generate_arduino_firmware(striprevolution
                           SRCS arduino/striprevolution.cpp
-                          HDRS arduino/Buffer.h common/Commands.h common/CommandParser.h
+                          HDRS arduino/FastLEDBuffer.h common/Commands.h common/CommandParser.h common/BufferBase.h
                          )

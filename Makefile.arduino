@@ -6,7 +6,7 @@ DEVICE = atmega328p
 AVRDUDE_BAUDRATE = 57600
 AVRDUDE_DEVICE   = /dev/ttyUSB0
 
-CONFIGFLAGS = -DSAVEMEM
+CONFIGFLAGS = -DSAVEMEM -DHAVE_ARDUINO
 
 LIBRARIES = libArduino libFastLED
 PROGRAMS  = striprevolution
@@ -17,6 +17,7 @@ all:
 	  $(MAKE) -f $(firstword $(MAKEFILE_LIST)) $$i; break; \
 	done
 
+std:  CONFIGFLAGS += -DBAUDRATE=115200
 xbee: CONFIGFLAGS += -DBAUDRATE=9600
 xbee: striprevolution_SUFFIX = -xbee
 upload: upload-std
