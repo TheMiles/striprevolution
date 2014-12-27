@@ -2,25 +2,25 @@ ifneq (4.0,$(firstword $(sort $(MAKE_VERSION) 4.0)))
 $(error Need make version 4.0)
 endif
 
-TARGETS = striplib arduino
+TARGETS = striplib avr
 
 RPI_TARGET := $(shell [ -e /proc/cpuinfo ] && grep -q BCM2708 /proc/cpuinfo && echo rpi)
 
 TARGETS += $(RPI_TARGET)
 all: $(TARGETS)
 
-arduino:
-	$(MAKE) -f Makefile.arduino
+avr:
+	$(MAKE) -f Makefile.avr
 rpi:
 	$(MAKE) -f Makefile.rpi
 
-ARDUINO_TARGETS = std xbee upload upload-std upload-xbee
+AVR_TARGETS = avr-std avr-xbee upload upload-avr-std upload-avr-xbee
 
-define arduino_target =
+define avr_target =
 $(1):
-	$$(MAKE) -f Makefile.arduino $$@
+	$$(MAKE) -f Makefile.avr $$@
 endef
-$(foreach t,$(ARDUINO_TARGETS),$(eval $(call arduino_target,$(t))))
+$(foreach t,$(AVR_TARGETS),$(eval $(call avr_target,$(t))))
 
 clean:
 	for t in $(TARGETS:build-%=%); do \
@@ -34,4 +34,4 @@ striplib: striplib/commands.py
 striplib/commands.py: common/Commands.h
 	scripts/make_commands.sh $< > $@
 
-.PHONY: arduino rpi
+.PHONY: avr rpi
