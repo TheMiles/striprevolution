@@ -12,3 +12,4 @@ minicom.cap
 /*.elf
 /*.hex
 /\.*stamp
+/localconf.make

@@ -8,6 +8,10 @@ AVRDUDE_DEVICE   = /dev/ttyUSB0
 
 CONFIGFLAGS = -DSAVEMEM -DHAVE_ARDUINO
 
+# If you need to set specific local config options
+# put them in a file called localconf.make
+-include localconf.make
+
 LIBRARIES = libArduino libFastLED
 PROGRAMS  = striprevolution
 
