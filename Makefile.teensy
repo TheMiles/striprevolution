@@ -1,0 +1,39 @@
+# -*- mode: makefile -*-
+
+CONFIGFLAGS = -DSAVEMEM -DHAVE_ARDUINO
+
+# If you need to set specific local config options
+# put them in a file called localconf.make
+-include localconf.make
+
+LIBRARIES = libTeensy
+#PROGRAMS  = striprevolution
+
+FIRMWARES = teensy
+all: teensy
+
+teensy:  CONFIGFLAGS += -DBAUDRATE=115200
+upload: upload-teensy
+
+libTeensy_DIR   = $(ARDUINO_BASEDIR)/hardware/teensy/cores/teensy3
+libTeensy_FLAGS = \
+	-I$(libTeensy_DIR)
+libTeensy_SRCS  = \
+	$(wildcard $(libTeensy_DIR)/*.c) \
+	$(wildcard $(libTeensy_DIR)/*.cpp)
+
+libFastLED_DIR   = FastLED
+libFastLED_FLAGS = $(libTeensy_FLAGS)
+libFastLED_SRCS  = $(wildcard $(libFastLED_DIR)/*.cpp)
+
+striprevolution_DIR   = .
+striprevolution_FLAGS = -Icommon -I$(libFastLED_DIR) $(libTeensy_FLAGS) $(CONFIGFLAGS) -Wall
+striprevolution_SRCS  = $(wildcard avr/*.cpp)
+
+help:
+	@echo "Available make options:"
+	@echo
+	@echo "  $(MAKE) [teensy]         build standard image"
+	@echo "  $(MAKE) upload[-teensy]  upload standard image"
+
+include make/teensy.make
