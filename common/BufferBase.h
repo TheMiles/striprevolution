@@ -57,7 +57,7 @@ public:
 
   void clear()
         {
-          memset( m_leds, 0, sizeof(m_leds)*m_nleds);
+          memset( m_leds, 0, sizeof(pixel_t)*m_nleds);
         }
   
   void rainbow()
