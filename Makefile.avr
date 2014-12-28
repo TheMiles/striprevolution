@@ -12,12 +12,12 @@ CONFIGFLAGS = -DSAVEMEM -DHAVE_AVR
 # put them in a file called localconf.make
 -include localconf.make
 
-LIBRARIES = libAVR libFastLED
-PROGRAMS  = striprevolution
+LIBRARIES = libAVR libFastLED-avr
+PROGRAMS  = striprevolution-avr
 
 FIRMWARES = avr-std avr-xbee
 all:
-	@for i in `ls .*.fwstamp 2>/dev/null | sed 's,^.\(avr-.*\)\.fwstamp$$,\1,'` avr-std; do \
+	@for i in `ls .avr-*.fwstamp 2>/dev/null | sed 's,^.\(avr-.*\)\.fwstamp$$,\1,'` avr-std; do \
 	  $(MAKE) -f $(firstword $(MAKEFILE_LIST)) $$i; break; \
 	done
 
@@ -35,13 +35,13 @@ libAVR_SRCS  = \
 	$(wildcard $(libAVR_DIR)/avr-libc/*.c) \
 	$(wildcard $(libAVR_DIR)/*.cpp)
 
-libFastLED_DIR   = FastLED
-libFastLED_FLAGS = $(libAVR_FLAGS)
-libFastLED_SRCS  = $(wildcard $(libFastLED_DIR)/*.cpp)
+libFastLED-avr_DIR   = FastLED
+libFastLED-avr_FLAGS = -I$(libFastLED-avr_DIR) $(libAVR_FLAGS)
+libFastLED-avr_SRCS  = $(wildcard $(libFastLED-avr_DIR)/*.cpp)
 
-striprevolution_DIR   = .
-striprevolution_FLAGS = -Icommon -I$(libFastLED_DIR) $(libAVR_FLAGS) $(CONFIGFLAGS) -Wall
-striprevolution_SRCS  = $(wildcard avr/*.cpp)
+striprevolution-avr_DIR   = .
+striprevolution-avr_FLAGS = -Icommon $(libFastLED-avr_FLAGS) $(CONFIGFLAGS) -Wall
+striprevolution-avr_SRCS  = $(wildcard avr/*.cpp)
 
 help:
 	@echo "Available make options:"

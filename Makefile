@@ -2,7 +2,7 @@ ifneq (4.0,$(firstword $(sort $(MAKE_VERSION) 4.0)))
 $(error Need make version 4.0)
 endif
 
-TARGETS = striplib teensy
+TARGETS = striplib avr teensy
 
 RPI_TARGET := $(shell [ -e /proc/cpuinfo ] && grep -q BCM2708 /proc/cpuinfo && echo rpi)
 

@@ -34,7 +34,7 @@ define fw-rule =
 $(1):  .$(1).fwstamp $(1).hex
 upload-$(1): $(1)
 	$$(AVRTOOL_PREFIX)/bin/avrdude -C$$(AVRDUDE_CONF) -p$$(DEVICE) -carduino -b$$(AVRDUDE_BAUDRATE) -P$$(AVRDUDE_DEVICE) -D -V -Uflash:w:$(1).hex
-CLEANFILES += $(1).hex
+CLEANFILES += $(1).hex .$(1).fwstamp
 endef
 
 include make/common.make

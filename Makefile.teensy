@@ -6,8 +6,8 @@ CONFIGFLAGS = -DSAVEMEM -DHAVE_TEENSY3
 # put them in a file called localconf.make
 -include localconf.make
 
-LIBRARIES = libTeensy libFastLED
-PROGRAMS  = striprevolution
+LIBRARIES = libTeensy libFastLED-teensy
+PROGRAMS  = striprevolution-teensy
 
 FIRMWARES = teensy
 all: teensy
@@ -22,13 +22,20 @@ libTeensy_SRCS  = \
 	$(wildcard $(libTeensy_DIR)/*.c) \
 	$(wildcard $(libTeensy_DIR)/*.cpp)
 
-libFastLED_DIR   = FastLED
-libFastLED_FLAGS = -I$(libFastLED_DIR) $(libTeensy_FLAGS)
-libFastLED_SRCS  = $(wildcard $(libFastLED_DIR)/*.cpp)
+libOctoWS2811_DIR   = $(ARDUINO_BASEDIR)/libraries/OctoWS2811
+libOctoWS2811_FLAGS = \
+	-I$(libOctoWS2811_DIR)
+libOctoWS2811_SRCS  = \
+	$(wildcard $(libOctoWS2811_DIR)/*.c) \
+	$(wildcard $(libOctoWS2811_DIR)/*.cpp)
 
-striprevolution_DIR   = .
-striprevolution_FLAGS = -Icommon $(libFastLED_FLAGS) $(CONFIGFLAGS) -Wall
-striprevolution_SRCS  = $(wildcard avr/*.cpp)
+libFastLED-teensy_DIR   = FastLED
+libFastLED-teensy_FLAGS = -I$(libFastLED-teensy_DIR) $(libTeensy_FLAGS)
+libFastLED-teensy_SRCS  = $(wildcard $(libFastLED-teensy_DIR)/*.cpp)
+
+striprevolution-teensy_DIR   = .
+striprevolution-teensy_FLAGS = -Icommon $(libFastLED-teensy_FLAGS) $(CONFIGFLAGS) -Wall
+striprevolution-teensy_SRCS  = $(wildcard avr/*.cpp)
 
 help:
 	@echo "Available make options:"

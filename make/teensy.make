@@ -36,7 +36,7 @@ ifeq ($(TEENSY), 30)
     LDSCRIPT = $(COREPATH)/mk20dx128.ld
 else
     ifeq ($(TEENSY), 31)
-        OPTIONS += -D__MK20DX256__ 
+        OPTIONS += -D__MK20DX256__
         LDSCRIPT = $(COREPATH)/mk20dx256.ld
     else
         $(error Invalid setting for TEENSY)
@@ -62,7 +62,7 @@ define fw-rule =
 $(1):  .$(1).fwstamp $(1).hex 
 upload-$(1): $(1)
 	$$(TOOLSPATH)/teensy_post_compile -file=$(1).hex -path=$$(CURDIR) -tools=$$(TOOLSPATH)
-CLEANFILES += $(1).hex
+CLEANFILES += $(1).hex .$(1).fwstamp
 endef
 
 include make/common.make 

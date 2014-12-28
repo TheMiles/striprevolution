@@ -3,10 +3,8 @@
 ########################
 # internal code
 ########################
-%.fwstamp:
-	[ -e $@ ] || $(MAKE) clean
+.%.fwstamp: %.hex
 	touch $@
-CLEANFILES += .*.fwstamp
 
 $(foreach fw,$(FIRMWARES),$(eval $(call fw-rule,$(fw))))
 
@@ -18,7 +16,7 @@ define compile =
 $$(addprefix $$(OBJDIR)/$(1)-,$$(notdir $(2))).o: $(2)
 	mkdir -p $$(OBJDIR)
 	$(3) $(4) -c -o $$@ $$<
-	@$(3) -MM $(4) -MQ $$@ $$< > $$@.d 
+	@$(3) -MM $(4) -MQ $$@ -MF $$@.d $$<
 endef
 
 define obj-size =
