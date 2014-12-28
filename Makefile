@@ -12,7 +12,6 @@ all: $(TARGETS)
 avr rpi teensy: 
 	$(MAKE) -f Makefile.$@
 
-
 AVR_TARGETS = avr-std avr-xbee upload upload-avr-std upload-avr-xbee
 
 define avr_target =
@@ -33,4 +32,4 @@ striplib: striplib/commands.py
 striplib/commands.py: common/Commands.h
 	scripts/make_commands.sh $< > $@
 
-.PHONY: avr rpi
+.PHONY: avr rpi teensy

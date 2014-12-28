@@ -23,11 +23,11 @@ libTeensy_SRCS  = \
 	$(wildcard $(libTeensy_DIR)/*.cpp)
 
 libFastLED_DIR   = FastLED
-libFastLED_FLAGS = $(libTeensy_FLAGS)
+libFastLED_FLAGS = -I$(libFastLED_DIR) $(libTeensy_FLAGS)
 libFastLED_SRCS  = $(wildcard $(libFastLED_DIR)/*.cpp)
 
 striprevolution_DIR   = .
-striprevolution_FLAGS = -Icommon -I$(libFastLED_DIR) $(libTeensy_FLAGS) $(CONFIGFLAGS) -Wall
+striprevolution_FLAGS = -Icommon $(libFastLED_FLAGS) $(CONFIGFLAGS) -Wall
 striprevolution_SRCS  = $(wildcard avr/*.cpp)
 
 help:
