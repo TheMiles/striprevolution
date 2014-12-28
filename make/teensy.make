@@ -61,7 +61,7 @@ OBJSIZE = $(COMPILERPATH)/arm-none-eabi-size
 define fw-rule =
 $(1):  .$(1).fwstamp $(1).hex 
 upload-$(1): $(1)
-	$$(TOOLSPATH)/teensy_post_compile -file=$(1).hex -path=$$(CURDIR) -tools=$$(TOOLSPATH)
+	$$(TOOLSPATH)/teensy_post_compile -file=$(1) -path=$$(CURDIR) -tools=$$(TOOLSPATH)
 CLEANFILES += $(1).hex .$(1).fwstamp
 endef
 
