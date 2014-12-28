@@ -2,17 +2,16 @@ ifneq (4.0,$(firstword $(sort $(MAKE_VERSION) 4.0)))
 $(error Need make version 4.0)
 endif
 
-TARGETS = striplib avr
+TARGETS = striplib teensy
 
 RPI_TARGET := $(shell [ -e /proc/cpuinfo ] && grep -q BCM2708 /proc/cpuinfo && echo rpi)
 
 TARGETS += $(RPI_TARGET)
 all: $(TARGETS)
 
-avr:
-	$(MAKE) -f Makefile.avr
-rpi:
-	$(MAKE) -f Makefile.rpi
+avr rpi teensy: 
+	$(MAKE) -f Makefile.$@
+
 
 AVR_TARGETS = avr-std avr-xbee upload upload-avr-std upload-avr-xbee
 
