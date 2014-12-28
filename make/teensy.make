@@ -4,8 +4,14 @@
 TEENSY = 31
 # Set to 24000000, 48000000, or 96000000 to set CPU core speed
 TEENSY_CORE_SPEED ?= 48000000
+
+ARDUINO_VERS = 105
+TEENSYDUINO_VERS = 120
+
 # configurable options
-OPTIONS  = -DUSB_SERIAL -DLAYOUT_US_ENGLISH
+OPTIONS  = -DUSB_SERIAL -DLAYOUT_US_ENGLISH -DARDUINO=$(ARDUINO_VERS) -DTEENSYDUINO=$(TEENSYDUINO_VERS)
+
+
 
 # set up avr tools and arduino installation
 PLATFORM := $(shell uname -s)
@@ -30,7 +36,7 @@ ifeq ($(TEENSY), 30)
     LDSCRIPT = $(COREPATH)/mk20dx128.ld
 else
     ifeq ($(TEENSY), 31)
-        OPTIONS += -D__MK20DX256__
+        OPTIONS += -D__MK20DX256__ 
         LDSCRIPT = $(COREPATH)/mk20dx256.ld
     else
         $(error Invalid setting for TEENSY)
@@ -39,7 +45,7 @@ endif
 
 # linker options
 # compiler and linker flags
-CPPFLAGS = -Wall -g -Os -mcpu=cortex-m4 -mthumb -nostdlib -MMD $(OPTIONS) -DF_CPU=$(TEENSY_CORE_SPEED) -I$(COREPATH)
+CPPFLAGS = -Wall -g -Os -mcpu=cortex-m4 -mthumb -MMD $(OPTIONS) -DF_CPU=$(TEENSY_CORE_SPEED) -I$(COREPATH)
 CFLAGS   = $(CPPFLAGS)
 CXXFLAGS = $(CPPFLAGS) -std=gnu++0x -felide-constructors -fno-exceptions -fno-rtti
 LDFLAGS = -Os -Wl,--gc-sections -mcpu=cortex-m4 -mthumb -T$(LDSCRIPT)

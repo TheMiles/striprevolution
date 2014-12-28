@@ -2,7 +2,7 @@
 
 # compiler and linker flags
 CFLAGS   = -Os -ffunction-sections -fdata-sections
-CFLAGS  += -mmcu=$(DEVICE) -DF_CPU=$(F_CPU) -mcall-prologues
+CFLAGS  += -mmcu=$(DEVICE) -DF_CPU=$(F_CPU) -mcall-prologues -DARDUINO
 CFLAGS  += -g
 CXXFLAGS = $(CFLAGS) -fno-exceptions
 LDFLAGS  = -Wl,--gc-sections

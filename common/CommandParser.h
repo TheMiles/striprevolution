@@ -4,11 +4,14 @@
 #include <stdint.h>
 #include <string.h>
 
-#ifndef LINUX
+#if defined(HAVE_AVR)
 #include <util/delay.h>
 #include <WString.h>
 // needed for free memory calculation
 extern int* __brkval;
+#elif defined(HAVE_TEENSY3)
+#include <util/delay.h>
+#include <WProgram.h>
 #else
 #define F(x) (x)
 #include <cstdarg>
@@ -295,10 +298,12 @@ void CommandParser<nleds_t,buffer_t,serial_t>::parse_input()
       break;
     case COMMAND_MEMFREE:
       log_msg( true, "COMMAND_MEMFREE");
-#ifndef LINUX
+#ifdef HAVE_AVR
       m_serial.print(F("Free RAM: "));
       m_serial.println(__brkval ? int(SP)-int(__brkval) :
                     int(SP)-int(__malloc_heap_start));
+#else
+      m_serial.print(F("Not supported"));
 #endif
       m_mode = IDLE;
       break;

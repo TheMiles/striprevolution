@@ -1,13 +1,13 @@
 # -*- mode: makefile -*-
 
-CONFIGFLAGS = -DSAVEMEM -DHAVE_ARDUINO
+CONFIGFLAGS = -DSAVEMEM -DHAVE_TEENSY3
 
 # If you need to set specific local config options
 # put them in a file called localconf.make
 -include localconf.make
 
-LIBRARIES = libTeensy
-#PROGRAMS  = striprevolution
+LIBRARIES = libTeensy libFastLED
+PROGRAMS  = striprevolution
 
 FIRMWARES = teensy
 all: teensy
