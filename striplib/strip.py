@@ -15,6 +15,7 @@ class Strip(object):
                          for d in os.walk("/dev").next()[2]
                          if d.startswith('tty.usbserial') or
                          d.startswith('ttyUSB') or
+                         d.startswith('tty.usbmodem') or
                          d.startswith('ttyAMA') ],reverse=True)
         if os.path.exists('vmodem0'):
             ports = ['vmodem0'] + ports
