@@ -57,7 +57,8 @@ class Droplets(object):
             center = random.randint(0, self.nleds - 1)
             width = random.randint(3, 8)
             hue = random.random()
-            self.droplets.append(Droplet(hue, center, width, 100))
+            time_to_live = random.randint(20, 150)
+            self.droplets.append(Droplet(hue, center, width, time_to_live))
         
         garbage = list()
         for idx, droplet in enumerate(self.droplets):
