@@ -81,7 +81,7 @@ class Droplets(object):
                 idx = (pos + i) * 3
                 colors[idx:idx + 3] += rgb
 
-        for idx in garbage:
+        for idx in sorted(garbage, reverse=True):
             self.droplets.pop(idx)
             
         msg = [abs(min(c, 255)) for c in colors]
