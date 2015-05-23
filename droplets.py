@@ -30,7 +30,6 @@ class Droplet(object):
             
         values = self.values * scaling
 
-        
         self.iteration += 1
         if self.iteration == self.time_to_live:
             self.valid = False
@@ -71,7 +70,7 @@ class Droplets(object):
                 values = numpy.copy(values[abs(pos):])
                 pos = 0
             if droplet.end() > self.nleds:
-                values = numpy.copy(values[:-(droplet.end() - self.nleds + 1)])
+                values = numpy.copy(values[:-(droplet.end() - self.nleds)])
 
             if numpy.empty(values):
                 continue
