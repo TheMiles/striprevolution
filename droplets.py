@@ -12,13 +12,15 @@ if not 'bytearray' in dir(__builtins__):
 
 
 class Droplet(object):
-    def __init__(self, hue, center, radius, time_to_live):
-        self.hue = hue
-        self.center = center
-        self.radius = radius
-        self.time_to_live = time_to_live
+    def __init__(self, nleds):
+        self.nleds = nleds
+        self.hue = random.random() * 0.12 + 0.6
+        self.center = random.random() * 0.1
+        self.radius = random.randint(2, 8)
+        self.time_to_live = random.randint(80, 150)
+        self.speed = random.random() / 80
         self.valid = True
-        self.values = scipy.signal.gaussian(radius * 2 + 1, radius / 2.0)
+        self.values = scipy.signal.gaussian(self.radius * 2 + 1, self.radius / 2.0)
         self.iteration = 0
 
     def fade(self):
@@ -30,17 +32,18 @@ class Droplet(object):
             
         values = self.values * scaling
 
+        self.center = (self.center + self.speed) % 1
+        
         self.iteration += 1
         if self.iteration == self.time_to_live:
             self.valid = False
         return values
 
     def begin(self):
-        return self.center - self.radius
+        return int(self.center * self.nleds) - self.radius
 
     def end(self):
-        return self.center + self.radius + 1
-
+        return int(self.center * self.nleds) + self.radius + 1
         
 class Droplets(object):
 
@@ -54,11 +57,8 @@ class Droplets(object):
         colors = numpy.array([0, 0, 0] * self.nleds)
 
         if random.random() < self.probability:
-            center = random.randint(0, self.nleds - 1)
-            width = random.randint(3, 8)
-            hue = random.random()
-            time_to_live = random.randint(20, 150)
-            self.droplets.append(Droplet(hue, center, width, time_to_live))
+#        if not self.droplets:
+            self.droplets.append(Droplet(self.nleds))
         
         garbage = list()
         for idx, droplet in enumerate(self.droplets):
