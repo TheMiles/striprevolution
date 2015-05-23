@@ -22,12 +22,14 @@ class Droplet(object):
         self.iteration = 0
 
     def fade(self):
-        if not self.valid:
-            return numpy.array([0, 0, 0])
-
         v = float(self.iteration) / self.time_to_live
         scaling = 0.5 - abs(v - 0.5)
+
+        if not self.valid:
+            scaling = 0
+            
         values = self.values * scaling
+
         
         self.iteration += 1
         if self.iteration == self.time_to_live:
@@ -38,7 +40,7 @@ class Droplet(object):
         return self.center - self.radius
 
     def end(self):
-        return self.center + self.radius
+        return self.center + self.radius + 1
 
         
 class Droplets(object):
@@ -66,10 +68,13 @@ class Droplets(object):
             values = droplet.fade()
             pos = droplet.begin()
             if pos < 0:
-                pos = 0
                 values = numpy.copy(values[abs(pos):])
-            if droplet.end() > self.nleds - 1:
+                pos = 0
+            if droplet.end() > self.nleds:
                 values = numpy.copy(values[:-(droplet.end() - self.nleds + 1)])
+
+            if numpy.empty(values):
+                continue
 
             for i, val in enumerate(values):
                 rgb = numpy.array(colorsys.hsv_to_rgb(droplet.hue, 1, val)) * 255
@@ -79,7 +84,6 @@ class Droplets(object):
             self.droplets.pop(idx)
             
         msg = [abs(min(c, 255)) for c in colors]
-        print msg
         return bytearray(msg)
 
 doIterate = True
