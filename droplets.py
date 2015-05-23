@@ -77,8 +77,9 @@ class Droplets(object):
                 continue
 
             for i, val in enumerate(values):
-                rgb = numpy.array(colorsys.hsv_to_rgb(droplet.hue, 1, val)) * 255
-                colors[(pos + i) * 3:(pos + i) * 3 + 3] += rgb
+                rgb = numpy.array(colorsys.hsv_to_rgb(droplet.hue, 1, val))**2.2 * 255
+                idx = (pos + i) * 3
+                colors[idx:idx + 3] += rgb
 
         for idx in garbage:
             self.droplets.pop(idx)
