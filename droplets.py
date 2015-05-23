@@ -12,7 +12,8 @@ if not 'bytearray' in dir(__builtins__):
 
 
 class Droplet(object):
-    def __init__(self, center, radius, time_to_live):
+    def __init__(self, hue, center, radius, time_to_live):
+        self.hue = hue
         self.center = center
         self.radius = radius
         self.time_to_live = time_to_live
@@ -23,9 +24,11 @@ class Droplet(object):
     def fade(self):
         if not self.valid:
             return numpy.array([0, 0, 0])
-            
-        offset = self.time_to_live / 2.0
-        values = self.values * (1 - abs(self.iteration - offset))
+
+        v = float(self.iteration) / self.time_to_live
+        scaling = 0.5 - abs(v - 0.5)
+        values = self.values * scaling
+        
         self.iteration += 1
         if self.iteration == self.time_to_live:
             self.valid = False
@@ -52,7 +55,8 @@ class Droplets(object):
         if random.random() < self.probability:
             center = random.randint(0, self.nleds - 1)
             width = random.randint(3, 8)
-            self.droplets.append(Droplet(center, width, 100))
+            hue = random.random()
+            self.droplets.append(Droplet(hue, center, width, 100))
         
         garbage = list()
         for idx, droplet in enumerate(self.droplets):
@@ -68,13 +72,12 @@ class Droplets(object):
                 values = numpy.copy(values[:-(droplet.end() - self.nleds + 1)])
 
             for i, val in enumerate(values):
-                colors[(pos + i) * 3:(pos + i) * 3 + 3] += colorsys.hsv_to_rgb(0, 1, -val)
+                rgb = numpy.array(colorsys.hsv_to_rgb(droplet.hue, 1, val)) * 255
+                colors[(pos + i) * 3:(pos + i) * 3 + 3] += rgb
 
         for idx in garbage:
             self.droplets.pop(idx)
             
-#        colors /= max(colors)
-        print colors
         msg = [abs(min(c, 255)) for c in colors]
         print msg
         return bytearray(msg)
