@@ -10,9 +10,12 @@ LIBRARIES = libTeensy libFastLED-teensy
 PROGRAMS  = striprevolution-teensy
 
 FIRMWARES = teensy
-all: teensy
+all: teensy teensy-xbee
 
-teensy:  CONFIGFLAGS += -DBAUDRATE=115200
+teensy:  CONFIGFLAGS += -DBAUDRATE=115200	
+teensy-xbee: CONFIGFLAGS += -DBAUDRATE=115200 -DXBEE
+teensy-xbee: LIBRARIES   += libXBee-teensy
+teensy-xbee: striprevolution_SUFFIX = -xbee
 upload: upload-teensy
 
 libTeensy_DIR   = $(ARDUINO_BASEDIR)/hardware/teensy/cores/teensy3
@@ -33,14 +36,21 @@ libFastLED-teensy_DIR   = FastLED
 libFastLED-teensy_FLAGS = -I$(libFastLED-teensy_DIR) $(libTeensy_FLAGS)
 libFastLED-teensy_SRCS  = $(wildcard $(libFastLED-teensy_DIR)/*.cpp)
 
+libXBee-teensy_DIR   = xbee-arduino
+libXBee-teensy_FLAGS = -I$(libXBee-teensy_DIR) $(libTeensy_FLAGS)
+libXBee-teensy_SRCS  = $(wildcard $(libXBee-teensy_DIR)/*.cpp)
+
+
 striprevolution-teensy_DIR   = .
-striprevolution-teensy_FLAGS = -Icommon $(libFastLED-teensy_FLAGS) $(CONFIGFLAGS) -Wall
+striprevolution-teensy_FLAGS = -Icommon $(libFastLED-teensy_FLAGS) $(libXBee-teensy_FLAGS) $(CONFIGFLAGS) -Wall
 striprevolution-teensy_SRCS  = $(wildcard avr/*.cpp)
 
 help:
 	@echo "Available make options:"
 	@echo
 	@echo "  $(MAKE) [teensy]         build standard image"
+	@echo "  $(MAKE) teensy-xbee      build xbee image"
 	@echo "  $(MAKE) upload[-teensy]  upload standard image"
+	@echo "  $(MAKE) upload[-xbee]    upload xbee image"
 
 include make/teensy.make

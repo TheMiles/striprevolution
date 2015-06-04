@@ -144,6 +144,7 @@ void CommandParser<nleds_t,buffer_t,serial_t>::init(nleds_t nleds)
 template<typename nleds_t,typename buffer_t,typename serial_t>
 CommandParser<nleds_t,buffer_t,serial_t>::~CommandParser()
 {
+  m_serial.end();
   m_buffer.free();
 }
 

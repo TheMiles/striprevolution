@@ -13,17 +13,22 @@ CONFIGFLAGS = -DSAVEMEM -DHAVE_AVR
 -include localconf.make
 
 LIBRARIES = libAVR libFastLED-avr
+# PROGRAMS  = striprevolution-avr striprevolution-avr-xbee
 PROGRAMS  = striprevolution-avr
 
+# FIRMWARES = avr-std avr-xbee
 FIRMWARES = avr-std avr-xbee
 all:
 	@for i in `ls .avr-*.fwstamp 2>/dev/null | sed 's,^.\(avr-.*\)\.fwstamp$$,\1,'` avr-std; do \
 	  $(MAKE) -f $(firstword $(MAKEFILE_LIST)) $$i; break; \
 	done
 
-avr-std:  CONFIGFLAGS += -DBAUDRATE=115200
-avr-xbee: CONFIGFLAGS += -DBAUDRATE=9600
-avr-xbee: striprevolution_SUFFIX = -xbee
+avr-std: CONFIGFLAGS += -DBAUDRATE=115200
+
+avr-xbee: CONFIGFLAGS += -DBAUDRATE=115200 -DXBEE
+avr-xbee: LIBRARIES   += libXBee-Arduino
+avr-xbee: striprevolution-avr_SUFFIX = -xbee
+
 upload: upload-avr-std
 
 libAVR_DIR   = $(ARDUINO_BASEDIR)/hardware/arduino/cores/arduino
@@ -39,16 +44,24 @@ libFastLED-avr_DIR   = FastLED
 libFastLED-avr_FLAGS = -I$(libFastLED-avr_DIR) $(libAVR_FLAGS)
 libFastLED-avr_SRCS  = $(wildcard $(libFastLED-avr_DIR)/*.cpp)
 
+libXBee-Arduino_DIR   = xbee-arduino
+libXBee-Arduino_FLAGS = -I$(libXBee-Arduino_DIR) $(libAVR_FLAGS)
+libXBee-Arduino_SRCS  = $(wildcard $(libXBee-Arduino_DIR)/*.cpp)
+
 striprevolution-avr_DIR   = .
 striprevolution-avr_FLAGS = -Icommon $(libFastLED-avr_FLAGS) $(CONFIGFLAGS) -Wall
 striprevolution-avr_SRCS  = $(wildcard avr/*.cpp)
 
+striprevolution-avr-xbee_DIR   = $(striprevolution-avr_DIR)
+striprevolution-avr-xbee_FLAGS = $(striprevolution-avr_FLAGS) $(libXBee-Arduino_FLAGS)
+striprevolution-avr-xbee_SRCS  = $(striprevolution-avr_SRCS)
+
 help:
 	@echo "Available make options:"
 	@echo
-	@echo "  $(MAKE) [avr-std]     build standard image"
-	@echo "  $(MAKE) avr-xbee      build xbee image"
-	@echo "  $(MAKE) upload[-std]  upload standard image"
-	@echo "  $(MAKE) upload-xbee   upload xbee image"
+	@echo "  $(MAKE) [avr-std]         build standard image"
+	@echo "  $(MAKE) avr-xbee          build xbee image"
+	@echo "  $(MAKE) upload[-avr-std]  upload standard image"
+	@echo "  $(MAKE) upload-avr-xbee   upload xbee image"
 
 include make/avr.make
