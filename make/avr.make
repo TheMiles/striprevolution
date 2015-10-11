@@ -1,8 +1,10 @@
 # -*- mode: makefile -*-
 
+ARDUINO_VERS = 105
+
 # compiler and linker flags
 CFLAGS   = -Os -ffunction-sections -fdata-sections
-CFLAGS  += -mmcu=$(DEVICE) -DF_CPU=$(F_CPU) -mcall-prologues -DARDUINO
+CFLAGS  += -mmcu=$(DEVICE) -DF_CPU=$(F_CPU) -mcall-prologues -DARDUINO=$(ARDUINO_VERS)
 CFLAGS  += -g
 CXXFLAGS = $(CFLAGS) -fno-exceptions
 LDFLAGS  = -Wl,--gc-sections
@@ -30,11 +32,9 @@ OBJSIZE    = $(AVRTOOL_PREFIX)/bin/avr-size
 PROGRAMMER_FLAGS = 
 OBJSIZE_FLAGS = --mcu=$(DEVICE)
 
-define fw-rule =
-$(1):  .$(1).fwstamp $(1).hex
+define upload-rule =
 upload-$(1): $(1)
 	$$(AVRTOOL_PREFIX)/bin/avrdude -C$$(AVRDUDE_CONF) -p$$(DEVICE) -carduino -b$$(AVRDUDE_BAUDRATE) -P$$(AVRDUDE_DEVICE) -D -V -Uflash:w:$(1).hex
-CLEANFILES += $(1).hex .$(1).fwstamp
 endef
 
 include make/common.make

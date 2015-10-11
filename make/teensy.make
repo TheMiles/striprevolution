@@ -21,7 +21,7 @@ ifeq ($(PLATFORM),Darwin)
         COREPATH     := $(ARDUINO_BASEDIR)/hardware/teensy/cores/teensy3
 	COMPILERPATH := $(TOOLSPATH)/arm-none-eabi/bin
 else
-	ARDUINO_BASEDIR := $(HOME)/teensy/arduino-1.0.6
+	ARDUINO_BASEDIR := $(HOME)/Software/teensy/arduino-1.0.6
         TOOLSPATH    := $(ARDUINO_BASEDIR)/hardware/tools
         COREPATH     := $(ARDUINO_BASEDIR)/hardware/teensy/cores/teensy3
 	COMPILERPATH := /usr/bin
@@ -58,11 +58,9 @@ AVRDUDE = $(TOOLSPATH)/teensy_post_compile
 OBJCOPY = $(COMPILERPATH)/arm-none-eabi-objcopy
 OBJSIZE = $(COMPILERPATH)/arm-none-eabi-size
 
-define fw-rule =
-$(1):  .$(1).fwstamp $(1).hex 
+define upload-rule =
 upload-$(1): $(1)
 	$$(TOOLSPATH)/teensy_post_compile -file=$(1) -path=$$(CURDIR) -tools=$$(TOOLSPATH)
-CLEANFILES += $(1).hex .$(1).fwstamp
 endef
 
 include make/common.make 

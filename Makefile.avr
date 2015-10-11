@@ -12,24 +12,16 @@ CONFIGFLAGS = -DSAVEMEM -DHAVE_AVR
 # put them in a file called localconf.make
 -include localconf.make
 
-LIBRARIES = libAVR libFastLED-avr
-# PROGRAMS  = striprevolution-avr striprevolution-avr-xbee
-PROGRAMS  = striprevolution-avr
-
-# FIRMWARES = avr-std avr-xbee
+LIBRARIES = libAVR libFastLED-avr libXBee-avr
+PROGRAM   = striprevolution
 FIRMWARES = avr-std avr-xbee
+
 all:
 	@for i in `ls .avr-*.fwstamp 2>/dev/null | sed 's,^.\(avr-.*\)\.fwstamp$$,\1,'` avr-std; do \
 	  $(MAKE) -f $(firstword $(MAKEFILE_LIST)) $$i; break; \
 	done
 
-avr-std: CONFIGFLAGS += -DBAUDRATE=115200
-
-avr-xbee: CONFIGFLAGS += -DBAUDRATE=115200 -DXBEE
-avr-xbee: LIBRARIES   += libXBee-Arduino
-avr-xbee: striprevolution-avr_SUFFIX = -xbee
-
-upload: upload-avr-std
+avr-xbee: CONFIGFLAGS += -DXBEE
 
 libAVR_DIR   = $(ARDUINO_BASEDIR)/hardware/arduino/cores/arduino
 libAVR_FLAGS = \
@@ -44,17 +36,13 @@ libFastLED-avr_DIR   = FastLED
 libFastLED-avr_FLAGS = -I$(libFastLED-avr_DIR) $(libAVR_FLAGS)
 libFastLED-avr_SRCS  = $(wildcard $(libFastLED-avr_DIR)/*.cpp)
 
-libXBee-Arduino_DIR   = xbee-arduino
-libXBee-Arduino_FLAGS = -I$(libXBee-Arduino_DIR) $(libAVR_FLAGS)
-libXBee-Arduino_SRCS  = $(wildcard $(libXBee-Arduino_DIR)/*.cpp)
+libXBee-avr_DIR   = xbee-arduino
+libXBee-avr_FLAGS = -I$(libXBee-avr_DIR) $(libAVR_FLAGS)
+libXBee-avr_SRCS  = $(wildcard $(libXBee-avr_DIR)/*.cpp)
 
-striprevolution-avr_DIR   = .
-striprevolution-avr_FLAGS = -Icommon $(libFastLED-avr_FLAGS) $(CONFIGFLAGS) -Wall
-striprevolution-avr_SRCS  = $(wildcard avr/*.cpp)
-
-striprevolution-avr-xbee_DIR   = $(striprevolution-avr_DIR)
-striprevolution-avr-xbee_FLAGS = $(striprevolution-avr_FLAGS) $(libXBee-Arduino_FLAGS)
-striprevolution-avr-xbee_SRCS  = $(striprevolution-avr_SRCS)
+striprevolution_DIR   = .
+striprevolution_FLAGS = -Icommon $(libAVR_FLAGS) -I$(libFastLED-avr_DIR) -I$(libXBee-avr_DIR) $(CONFIGFLAGS) -Wall
+striprevolution_SRCS  = $(wildcard avr/*.cpp)
 
 help:
 	@echo "Available make options:"
