@@ -7,13 +7,17 @@ CONFIGFLAGS = -DSAVEMEM -DHAVE_TEENSY3
 -include localconf.make
 
 LIBRARIES = libTeensy libFastLED-teensy
-PROGRAMS  = striprevolution-teensy
+PROGRAM   = striprevolution
+FIRMWARES = teensy-std teensy-xbee
 
-FIRMWARES = teensy
-all: teensy
+all:
+	@for i in `ls .teensy-*.fwstamp 2>/dev/null | sed 's,^.\(teensy-.*\)\.fwstamp$$,\1,'` teensy-std; do \
+	  $(MAKE) -f $(firstword $(MAKEFILE_LIST)) $$i; break; \
+	done
 
-teensy:  CONFIGFLAGS += -DBAUDRATE=115200
-upload: upload-teensy
+teensy-xbee: CONFIGFLAGS += -DXBEE
+
+upload: upload-teensy-std
 
 libTeensy_DIR   = $(ARDUINO_BASEDIR)/hardware/teensy/cores/teensy3
 libTeensy_FLAGS = \
@@ -33,14 +37,20 @@ libFastLED-teensy_DIR   = FastLED
 libFastLED-teensy_FLAGS = -I$(libFastLED-teensy_DIR) $(libTeensy_FLAGS)
 libFastLED-teensy_SRCS  = $(wildcard $(libFastLED-teensy_DIR)/*.cpp)
 
-striprevolution-teensy_DIR   = .
-striprevolution-teensy_FLAGS = -Icommon $(libFastLED-teensy_FLAGS) $(CONFIGFLAGS) -Wall
-striprevolution-teensy_SRCS  = $(wildcard avr/*.cpp)
+libXBee-teensy_DIR   = xbee-arduino
+libXBee-teensy_FLAGS = -I$(libXBee-teensy_DIR) $(libTeensy_FLAGS)
+libXBee-teensy_SRCS  = $(wildcard $(libXBee-teensy_DIR)/*.cpp)
+
+striprevolution_DIR   = .
+striprevolution_FLAGS = -Icommon $(libFastLED-teensy_FLAGS) $(libXBee-teensy_FLAGS) $(CONFIGFLAGS) -Wall
+striprevolution_SRCS  = $(wildcard avr/*.cpp)
 
 help:
 	@echo "Available make options:"
 	@echo
 	@echo "  $(MAKE) [teensy]         build standard image"
+	@echo "  $(MAKE) teensy-xbee      build xbee image"
 	@echo "  $(MAKE) upload[-teensy]  upload standard image"
+	@echo "  $(MAKE) upload[-xbee]    upload xbee image"
 
 include make/teensy.make

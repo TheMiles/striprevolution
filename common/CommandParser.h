@@ -138,12 +138,13 @@ template<typename nleds_t,typename buffer_t,typename serial_t>
 void CommandParser<nleds_t,buffer_t,serial_t>::init(nleds_t nleds)
 {
   m_buffer.init(nleds);
-  m_serial.begin(BAUDRATE);
+  m_serial.begin(int(BAUDRATE));
 }
 
 template<typename nleds_t,typename buffer_t,typename serial_t>
 CommandParser<nleds_t,buffer_t,serial_t>::~CommandParser()
 {
+  m_serial.end();
   m_buffer.free();
 }
 

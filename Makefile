@@ -12,13 +12,21 @@ all: $(TARGETS)
 avr rpi teensy: 
 	$(MAKE) -f Makefile.$@
 
-AVR_TARGETS = avr-std avr-xbee upload upload-avr-std upload-avr-xbee
-
+# create specific AVR targets
+AVR_TARGETS = avr-std avr-xbee upload-avr-std upload-avr-xbee
 define avr_target =
 $(1):
 	$$(MAKE) -f Makefile.avr $$@
 endef
 $(foreach t,$(AVR_TARGETS),$(eval $(call avr_target,$(t))))
+
+# create specific teensy targets
+TEENSY_TARGETS = teensy-std teensy-xbee upload-teensy-std upload-teensy-xbee
+define teensy_target =
+$(1):
+	$$(MAKE) -f Makefile.teensy $$@
+endef
+$(foreach t,$(TEENSY_TARGETS),$(eval $(call teensy_target,$(t))))
 
 clean:
 	for t in $(TARGETS:build-%=%); do \
