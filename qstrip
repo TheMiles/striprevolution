@@ -21,8 +21,8 @@ def main():
                         help='serial device baud rate')
     parser.add_argument('--timeout', metavar='TIMEOUT', type=int, default=1,
                         help='serial timeout in seconds')
-    parser.add_argument('--debug', metavar='DEBUG', type=bool, default=False,
-                        help='enable/disable debug output')
+    parser.add_argument('--debug', action='store_true',
+                        help='enable debug output')
     args = parser.parse_args()
 
     w = StripWidget(args.device,args.speed,args.timeout,args.debug)
@@ -31,4 +31,6 @@ def main():
     return a.exec_()
 
 if __name__ == '__main__':
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
     main()
