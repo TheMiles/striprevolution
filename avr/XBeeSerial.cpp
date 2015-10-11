@@ -1,5 +1,3 @@
-#ifdef XBEE
-
 #include "XBeeSerial.h"
 
 XBeeSerial::XBeeSerial()
@@ -231,4 +229,3 @@ int XBeeSerial::readBytes( char * output_buffer, int num_bytes_to_read )
 
 	return actualNumBytesToRead;
 }
-#endif

@@ -9,16 +9,7 @@
 #define RGB_ORDER  GRB
 typedef uint16_t   nleds_t; // uint8_t: max 255, uint16_t: max 65535
 
-
-
-#ifdef XBEE
-#include "XBeeSerial.h"
-typedef XBeeSerial LEDSerial;
-LEDSerial serial;
-#else
-typedef serial_t LEDSerial;
 LEDSerial& serial = Serial;	
-#endif
 
 #include "FastLEDBuffer.h"
 typedef Buffer<nleds_t,STRIP_PIN,RGB_ORDER> LEDBuffer;
