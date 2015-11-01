@@ -6,7 +6,7 @@ CONFIGFLAGS = -DSAVEMEM -DHAVE_TEENSY3
 # put them in a file called localconf.make
 -include localconf.make
 
-LIBRARIES = libTeensy libFastLED-teensy
+LIBRARIES = libTeensy libFastLED-teensy libXBee-teensy
 PROGRAM   = striprevolution
 FIRMWARES = teensy-std teensy-xbee
 
