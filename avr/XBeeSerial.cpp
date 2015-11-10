@@ -1,4 +1,14 @@
+#include "Utils.h"
+
 #include "XBeeSerial.h"
+
+#if !defined (SERIALDEVICE)
+#if defined(HAVE_TEENSY3)
+#define SERIALDEVICE Serial2
+#else
+#define SERIALDEVICE Serial
+#endif
+#endif
 
 XBeeSerial::XBeeSerial()
 : m_xbee( XBee() )
@@ -6,18 +16,41 @@ XBeeSerial::XBeeSerial()
 
 void XBeeSerial::begin( int baudrate )
 {
-	Serial.begin( baudrate );
-	m_xbee.begin( Serial );
+	SERIALDEVICE.begin( baudrate );
+	m_xbee.begin( SERIALDEVICE );
 
 	memset( m_payload, 0, PAYLOAD_LENGTH );
 	m_zbTx.setPayload( m_payload );
 	m_zbTx.setPayloadLength( PAYLOAD_LENGTH );
+
+	setAddress(0,0);
 }
 
 void XBeeSerial::end()
 {
-	Serial.end();
+	SERIALDEVICE.end();
 	memset( m_payload, 0, PAYLOAD_LENGTH );
+}
+
+size_t XBeeSerial::sendBuffer(size_t payload_length)
+{
+	size_t sentBytes = 0;
+
+	payload_length = min(payload_length, PAYLOAD_LENGTH);
+
+	m_zbTx.setPayloadLength( payload_length );
+	m_xbee.send(m_zbTx);
+
+	if (m_xbee.readPacket(500)) {
+		if (m_xbee.getResponse().getApiId() == ZB_TX_STATUS_RESPONSE) {
+			m_xbee.getResponse().getZBTxStatusResponse(m_txStatus);
+			if (m_txStatus.getDeliveryStatus() == SUCCESS) {
+				sentBytes = payload_length;
+			} 
+		}
+	}
+
+	return sentBytes;
 }
 
 void XBeeSerial::setAddress( uint32_t sh, uint32_t sl )
@@ -42,11 +75,21 @@ size_t XBeeSerial::print(const __FlashStringHelper *f ) {
 }
 
 size_t XBeeSerial::print(const char *cstr ) {
-	size_t count = 0;
-	while( *cstr != 0 ) {
-		count += print( *cstr++ );
+	size_t sentBytes = 0;
+
+    while( cstr[sentBytes] != 0 )
+    {
+	    size_t i = 0;
+	
+		while( cstr[sentBytes+i] != 0 && i < PAYLOAD_LENGTH) { ++i; }
+
+		if( i > 0 )
+		{
+			memmove(m_payload, &cstr[sentBytes], i);
+			sentBytes += sendBuffer(i);
+		}
 	}
-	return count;
+	return sentBytes;
 }
 
 size_t XBeeSerial::print(char c){
@@ -55,19 +98,8 @@ size_t XBeeSerial::print(char c){
 
 	m_payload[0] = c;
 
-	m_xbee.send(m_zbTx);
 
-	if (m_xbee.readPacket(500)) {
-		if (m_xbee.getResponse().getApiId() == ZB_TX_STATUS_RESPONSE) {
-			m_xbee.getResponse().getZBTxStatusResponse(m_txStatus);
-
-			if (m_txStatus.getDeliveryStatus() == SUCCESS) {
-				sentBytes = 1;
-			} 
-		}
-	}
-
-	return sentBytes;
+	return sendBuffer(1);
 }
 
 size_t XBeeSerial::print(unsigned char value, int base){

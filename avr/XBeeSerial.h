@@ -3,7 +3,7 @@
 
 #include <XBee.h>
 
-#define PAYLOAD_LENGTH 1
+#define PAYLOAD_LENGTH 32
 
 class XBeeSerial
 {
@@ -43,6 +43,8 @@ public:
   int readBytes( char * output_buffer, int num_bytes_to_read );
 
 private: 
+  size_t sendBuffer(size_t payload_length);
+
   uint8_t             m_payload[PAYLOAD_LENGTH];
   XBee                m_xbee;
   XBeeAddress64       m_addr64;
