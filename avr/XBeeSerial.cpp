@@ -20,6 +20,8 @@ void XBeeSerial::begin( int baudrate )
 	memset( m_payload, 0, PAYLOAD_LENGTH );
 	m_zbTx.setPayload( m_payload );
 	m_zbTx.setPayloadLength( PAYLOAD_LENGTH );
+
+	setAddress(0,0);
 }
 
 void XBeeSerial::end()
