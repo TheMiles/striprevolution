@@ -1,13 +1,21 @@
 #include "XBeeSerial.h"
 
+#if !defined (SERIALDEVICE)
+#if defined(HAVE_TEENSY3)
+#define SERIALDEVICE Serial2
+#else
+#define SERIALDEVICE Serial
+#endif
+#endif
+
 XBeeSerial::XBeeSerial()
 : m_xbee( XBee() )
 {}
 
 void XBeeSerial::begin( int baudrate )
 {
-	Serial.begin( baudrate );
-	m_xbee.begin( Serial );
+	SERIALDEVICE.begin( baudrate );
+	m_xbee.begin( SERIALDEVICE );
 
 	memset( m_payload, 0, PAYLOAD_LENGTH );
 	m_zbTx.setPayload( m_payload );
@@ -16,7 +24,7 @@ void XBeeSerial::begin( int baudrate )
 
 void XBeeSerial::end()
 {
-	Serial.end();
+	SERIALDEVICE.end();
 	memset( m_payload, 0, PAYLOAD_LENGTH );
 }
 
